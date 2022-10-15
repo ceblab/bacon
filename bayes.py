@@ -33,13 +33,45 @@ class Bayes:
                     self.score_disc_list[num_vari][conb] = self.score(set(conb))
 
 
+def make_W_set_of_i(disc_of_i,child_vari,num_variable,max_parent_set):
+    W_set_of_i = list()
+    W_set_of_i.append((child_vari,))
+    score_of_empty_set = disc_of_i[(child_vari,)]
+    max_score_list = [score_of_empty_set for i in range(num_variable)]#score of parent set i
+    for i in range(num_variable):
+        if disc_of_i[(i,)] > score_of_empty_set:
+            W_set_of_i.append((i,))
+            max_score_list[i] = disc_of_i[(i,)]
+    
+    vari_list = [i for i in range(num_variable) if i != child_vari]
+    
+    for conb in itertools.combinations(vari_list,2):
+        a,b = conb
+        s = disc_of_i[conb]
+        if s>max_score_list[a] and s> max_score_list[b]:
+            W_set_of_i.append(conb)
+    
+    for conb in itertools.combinations(vari_list,3):
+        a,b,c = conb
+        s = disc_of_i[conb]
+        if s>max_score_list[a] and s> max_score_list[b] and s> max_score_list[c] and s>disc_of_i[(a,b)] and s>disc_of_i[(a,c)] and s>disc_of_i[(b,c)]:
+            W_set_of_i.append(conb)
+    return W_set_of_i
+            
 
 
 
-bayes = Bayes(9,3)
+num_variable = 9
+max_parent = 3
+bayes = Bayes(num_variable,max_parent)
 bayes.output()
 #s = set((1,2,3))
 score = bayes.score_disc_list[1][(1,)]
 print(score)
 score = bayes.score_disc_list[1][(2,3,8)]
 print(score)
+
+list = make_W_set_of_i(bayes.score_disc_list[1],1,num_variable,max_parent)
+
+for i in list:
+    print(i ,": score" ,bayes.score_disc_list[1][i])

@@ -1,5 +1,6 @@
 import numpy as np
 import itertools
+import copy
 
 np.random.seed(314)
 
@@ -58,7 +59,23 @@ def make_W_set_of_i(disc_of_i,child_vari,num_variable,max_parent_set):
             W_set_of_i.append(conb)
     return W_set_of_i
             
+def decomposition_of_i(w_set,child_vari):
 
+
+    return 0
+
+def make_union_set(U_set):
+    union_U_set = copy(U_set)
+    l = len(U_set)
+    for i in range(l):
+        for j in range(i+1,l):
+            list1 =list(U_set[i])
+            list2 =list(U_set[j])
+            sum_set ={u for u in list1} | {v for v in list2}
+            sum_list = [m for m in sum_set]
+            sum_list = sum_list.sort()
+
+    return 0
 
 
 num_variable = 9
@@ -75,3 +92,7 @@ list = make_W_set_of_i(bayes.score_disc_list[1],1,num_variable,max_parent)
 
 for i in list:
     print(i ,": score" ,bayes.score_disc_list[1][i])
+
+s = {3,2,1}
+l =[i for i in s]
+print(l)

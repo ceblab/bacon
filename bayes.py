@@ -6,5 +6,5 @@ class Bayes:
     def output(self):
         print(self.num_variable)
 
-bayes = Bayes(10)
+bayes = Bayes(9)
 bayes.output()

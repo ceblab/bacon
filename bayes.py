@@ -64,18 +64,23 @@ def decomposition_of_i(w_set,child_vari):
 
     return 0
 
-def make_union_set(U_set):
-    union_U_set = copy(U_set)
+def make_union_set(U_set,max_parent_set):
+    union_U_set = {U_set[0]}
     l = len(U_set)
-    for i in range(l):
-        for j in range(i+1,l):
-            list1 =list(U_set[i])
-            list2 =list(U_set[j])
-            sum_set ={u for u in list1} | {v for v in list2}
-            sum_list = [m for m in sum_set]
-            sum_list = sum_list.sort()
+    U_set_tuple_to_set = [{i for i in j} for j in U_set]
+    for i in range(1,l):
+        for j in range(i,l):
+            set1 = U_set_tuple_to_set[i] | U_set_tuple_to_set[j]
+            list1 = [i for i in set1]
+            if len(list1) < max_parent_set+1:
+                set2 = tuple(np.sort(list1))
+                union_U_set.add(set2)
 
-    return 0
+            
+
+            
+    return union_U_set
+
 
 
 num_variable = 9
@@ -93,6 +98,5 @@ list = make_W_set_of_i(bayes.score_disc_list[1],1,num_variable,max_parent)
 for i in list:
     print(i ,": score" ,bayes.score_disc_list[1][i])
 
-s = {3,2,1}
-l =[i for i in s]
-print(l)
+print(list)
+print(make_union_set(list,3))

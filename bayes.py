@@ -1,9 +1,10 @@
+from calendar import c
 from re import L
 import numpy as np
 import itertools
 import copy
 import math
-
+np.set_printoptions(threshold=np.inf)
 from regex import W
 
 np.random.seed(314)
@@ -17,25 +18,27 @@ class Bayes:
 
     def __init__(self,num_vari,num_parent):
         self.num_variable = num_vari
-        self.max_parent_set = num_parent
-        self.score_disc_list = [{(i,) : self.score({i})} for i in range(num_vari)]#key tuple(i) -> parent set ga empty set no  baai 
-        self.make_score_disc()
+        self.max_parent_set = num_parent 
+        self.init_score_disc()
 
+    def init_score_disc(self):
+        self.score_disc_list = [dict() for i in range(self.num_variable)]
 
+        
     def output(self):
         print(self.num_variable)
     
     def score(self,subset):
         return np.random.randint(0,1023)
 
-    def make_score_disc(self):
-        for num_vari in range(self.num_variable):
-            vari_list = [i for i in range(self.num_variable) if i != num_vari]
+    def make_score_disc_i(self,child_vari):
+        self.score_disc_list[child_vari][(child_vari,)] = self.score(set((child_vari,)))
+        vari_list = [i for i in range(self.num_variable) if i != child_vari]
 
-            for m in range(1, self.max_parent_set + 1):
-                for conb in itertools.combinations(vari_list,m ):
+        for m in range(1, self.max_parent_set + 1):
+            for conb in itertools.combinations(vari_list,m ):
                 
-                    self.score_disc_list[num_vari][conb] = self.score(set(conb))
+                self.score_disc_list[child_vari][conb] = self.score(set(conb))
 
 
 def make_W_set_of_i(disc_of_i,child_vari,num_variable,max_parent_set):
@@ -68,7 +71,7 @@ def decomposition_of_i(w_set_in,child_vari,max_parent_set):
     W_set.remove((child_vari,))
     U_set = [i for i in w_set_in if len(i) == 1]
     W_set = W_set - make_union_set(U_set,max_parent_set)
-    print("W_set",W_set)#
+    
     V_set = set()
     for w in W_set:
         for i in range (1,len(w)+1):
@@ -76,7 +79,7 @@ def decomposition_of_i(w_set_in,child_vari,max_parent_set):
                 if not (conb in U_set) :
                     V_set.add(conb)
     k = len(V_set)
-    print("V_set",V_set)#
+    
     while(len(W_set) > 0):
         W_set_lis = [{i for i in j} for j in W_set]
         V_set_dust = set()
@@ -89,7 +92,7 @@ def decomposition_of_i(w_set_in,child_vari,max_parent_set):
             if v_in_count <= 1:
                 V_set_dust.add(i)
         V_set = V_set - V_set_dust
-        print("V_set",V_set)#
+        
         W_set_dash = set()
         v_dash = ()
         k_dash = 0
@@ -151,7 +154,7 @@ def make_union_set_with_v(U_set,max_parent_set,v):
             
     return union_U_set
 
-def calc_p_of_i(U_set,W_set,disc_of_i,child_vari):
+def calc_s_of_i(U_set,W_set,disc_of_i,child_vari):
     s_disc = dict()
     l = len(U_set)
     empty_score = math.log(disc_of_i[(child_vari,)])
@@ -201,25 +204,58 @@ def calc_p_of_i(U_set,W_set,disc_of_i,child_vari):
                             
     return s_disc
 
+def making_d_star(U_set,num_vari,child_vari):
+    d_ij =[0 for i in range(num_vari)]
+    for i in range(num_vari):
+        if child_vari == i:
+            d_ij[i] = (-1,)
+        else:
+            p_list = list()
+            for j in range(len(U_set)):
+                set1 = {k for k in U_set[j]}
+                if(i in set1):
+                    p_list.append(j)
+            d_ij[i]=tuple(p_list)
+    return d_ij
+
+
+
+def making_QUBO(bayes):
+    num_vari = bayes.num_variable
+    max_parent_num = bayes.max_parent_set
+    len_of_u =[0 for i in range(num_vari)]
+    xi = [0 for i in range(num_vari)]
+    delta = [0 for i in range(num_vari)]
+    d_star =[[0 for i in range(num_vari)] for j in range(num_vari)]
+    s_list = [dict() for i in range(num_vari)]
+    for num in range(num_vari):
+        bayes.make_score_disc_i(num)
+        w_i=make_W_set_of_i(bayes.score_disc_list[num],num,num_vari,max_parent_num)
+        u_i =decomposition_of_i(w_i,num,max_parent_num)
+        print(num,w_i)
+        print(num,u_i)
+        s_list[num] = calc_s_of_i(u_i,w_i,bayes.score_disc_list[num],num)
+        min_s = min(s_list[num].values())
+        delta[num] = min_s
+        xi[num] = -3 * min_s
+        d_star[num] = making_d_star(u_i,num_vari,num)
+        len_of_u[num] = len(u_i)
+    qubo_size = int(sum(len_of_u) + num_vari + num_vari*(num_vari +1)/2)
+    qubo = np.zeros((qubo_size,qubo_size))
+    count_u = 0
+    print(s_list[0])
+    for i in range(num_vari):
+        for k , v in s_list[i].items():
+            a,b,c = k
+            qubo[b+count_u][c + count_u] = v
+        count_u = count_u + len_of_u[i]
+    print(qubo)
+
+    return 0
+
 num_variable = 9
 max_parent = 3
 bayes = Bayes(num_variable,max_parent)
-bayes.output()
-#s = set((1,2,3))
-score = bayes.score_disc_list[1][(1,)]
-print(score)
-score = bayes.score_disc_list[1][(2,3,8)]
-print(score)
 
-w_list = make_W_set_of_i(bayes.score_disc_list[1],1,num_variable,max_parent)
-print("w_list",w_list)
-for i in w_list:
-    print(i ,": score" ,bayes.score_disc_list[1][i])
+making_QUBO(bayes)
 
-
-p_list = decomposition_of_i(w_list,1,max_parent)
-print("p_list",p_list)
-
-score_s =calc_p_of_i(p_list,w_list,bayes.score_disc_list[1],1)
-print(score_s.items())
-print(min(score_s.values()))

@@ -1,6 +1,8 @@
+from re import L
 import numpy as np
 import itertools
 import copy
+import math
 
 from regex import W
 
@@ -149,6 +151,56 @@ def make_union_set_with_v(U_set,max_parent_set,v):
             
     return union_U_set
 
+def calc_p_of_i(U_set,W_set,disc_of_i,child_vari):
+    s_disc = dict()
+    l = len(U_set)
+    empty_score = math.log(disc_of_i[(child_vari,)])
+    for i in range(l):
+        for j in range(i,l):
+            if i ==0 & j == 0:
+                pair_ij = (child_vari,)
+            else:
+                set_i= {k for k in U_set[i]}
+                set_j = {k for k in U_set[j]}
+                set_ij = (set_i | set_j) - {child_vari}            
+                pair_ij = tuple(np.sort([k for k in set_ij]))
+            if i == 0:
+                s_disc[(child_vari,i,j)] = 0
+
+
+            elif(i == j):
+                if(pair_ij in W_set):
+                    s_disc[(child_vari,i,j)] = -math.log(disc_of_i[pair_ij]) + empty_score
+                else:
+                    s_disc[(child_vari,i,j)] = 0
+            else:
+                if(pair_ij in W_set):
+                    if(U_set[i] in W_set):
+                        if(U_set[j] in W_set):
+                            s_disc[(child_vari,i,j)] = - math.log(disc_of_i[pair_ij]) + math.log(disc_of_i[U_set[i]]) +math.log(disc_of_i[U_set[j]]) -empty_score
+                        else:
+                            s_disc[(child_vari,i,j)] = - math.log(disc_of_i[pair_ij]) + math.log(disc_of_i[U_set[i]])
+                    else:
+                        if(U_set[j] in W_set):
+                            s_disc[(child_vari,i,j)] = - math.log(disc_of_i[pair_ij]) +math.log(disc_of_i[U_set[j]])
+                        else:
+                            s_disc[(child_vari,i,j)] = - math.log(disc_of_i[pair_ij]) + empty_score
+                else:
+                    if(U_set[i] in W_set):
+                        if(U_set[j] in W_set):
+                            s_disc[(child_vari,i,j)] = math.log(disc_of_i[U_set[i]]) +math.log(disc_of_i[U_set[j]]) - 2 * empty_score
+                        else:
+                            s_disc[(child_vari,i,j)] = - empty_score + math.log(disc_of_i[U_set[i]])
+                    else:
+                        if(U_set[j] in W_set):
+                            s_disc[(child_vari,i,j)] = - empty_score +math.log(disc_of_i[U_set[j]])
+                        else:
+                            s_disc[(child_vari,i,j)] = 0
+
+
+                            
+    return s_disc
+
 num_variable = 9
 max_parent = 3
 bayes = Bayes(num_variable,max_parent)
@@ -161,9 +213,13 @@ print(score)
 
 w_list = make_W_set_of_i(bayes.score_disc_list[1],1,num_variable,max_parent)
 print("w_list",w_list)
-#for i in w_list:
-#    print(i ,": score" ,bayes.score_disc_list[1][i])
+for i in w_list:
+    print(i ,": score" ,bayes.score_disc_list[1][i])
 
 
 p_list = decomposition_of_i(w_list,1,max_parent)
 print("p_list",p_list)
+
+score_s =calc_p_of_i(p_list,w_list,bayes.score_disc_list[1],1)
+print(score_s.items())
+print(min(score_s.values()))

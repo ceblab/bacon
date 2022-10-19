@@ -226,14 +226,14 @@ def making_QUBO(bayes):
     len_of_u =[0 for i in range(num_vari)]
     xi = [0 for i in range(num_vari)]
     delta = [0 for i in range(num_vari)]
-    d_star =[[0 for i in range(num_vari)] for j in range(num_vari)]
+    d_star =[list() for j in range(num_vari)]
     s_list = [dict() for i in range(num_vari)]
     for num in range(num_vari):
         bayes.make_score_disc_i(num)
         w_i=make_W_set_of_i(bayes.score_disc_list[num],num,num_vari,max_parent_num)
         u_i =decomposition_of_i(w_i,num,max_parent_num)
-        print(num,w_i)
-        print(num,u_i)
+        #print(num,w_i)
+        #print(num,u_i)
         s_list[num] = calc_s_of_i(u_i,w_i,bayes.score_disc_list[num],num)
         min_s = min(s_list[num].values())
         delta[num] = min_s
@@ -243,17 +243,55 @@ def making_QUBO(bayes):
     qubo_size = int(sum(len_of_u) + num_vari + num_vari*(num_vari +1)/2)
     qubo = np.zeros((qubo_size,qubo_size))
     count_u = 0
-    print(s_list[0])
+    delta1 =  - min(delta)
+    delta2 = (num_vari - 2) * delta1
+    count_c=[0 for i in range(num_vari)]
+    #print(s_list[0])
+    #print(d_star)
     for i in range(num_vari):
         for k , v in s_list[i].items():
             a,b,c = k
-            qubo[b+count_u][c + count_u] = v
+            if b == c:
+                qubo[b+count_u][c + count_u] += v
+            else:
+                qubo[b+count_u][c + count_u] += v + xi[i]
+        count_c[i] = count_u
         count_u = count_u + len_of_u[i]
+    count_b = 0
+    for i in range(num_vari):
+        qubo[count_u][count_u] += xi[i]
+        for j in range(len_of_u[i]):
+            qubo[count_u][j + count_b] += - xi[i]
+        count_b = count_b + len_of_u[i]
+        count_u = count_u + 1
+    
+    vari_list = [i for i in range(num_vari)]
+    for conb in itertools.combinations(vari_list,3):
+        i,j,k = conb
+        r_ij = i*num_vari - int(i*(i+1)/2) + j - i -1
+        r_jk = j*num_vari - int(j*(j+1)/2) + k - j -1
+        r_ik = i*num_vari - int(i*(i+1)/2) + k - i -1
+        qubo[count_u + r_ij][count_u + r_jk] += delta1
+        qubo[count_u + r_ij][count_u + r_ik] += -delta1
+        qubo[count_u + r_ik][count_u + r_jk] += -delta1
+        qubo[count_u + r_ik][count_u + r_ik] += delta1
+    for conb in itertools.combinations(vari_list,2):
+        i,j = conb
+        r_ij = i*num_vari - int(i*(i+1)/2) + j - i -1
+        for d in d_star[i][j]:
+            qubo[count_c[i]+d][count_u + r_ij] += delta2
+        for d in d_star[j][i]:
+            qubo[count_c[j]+d][count_u + r_ij] += -delta2
+            qubo[count_c[i]+d][count_c[i]+d] += delta2
+    
+
+
+
     print(qubo)
 
     return 0
 
-num_variable = 9
+num_variable = 4
 max_parent = 3
 bayes = Bayes(num_variable,max_parent)
 

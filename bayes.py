@@ -311,12 +311,7 @@ def recreate(x,bayes):
         parent_set_list[i] = tuple(np.sort([k for k in s1]))
     
     return parent_set_list
-        
 
-
-    
-
-    return 0
 
 num_variable = 9
 max_parent = 3

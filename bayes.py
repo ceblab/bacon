@@ -13,12 +13,14 @@ class Bayes:
     num_variable = 0
     max_parent_set = 0
     score_disc_list = list()
-    
+    u_set_list = list()
+    count_len_of_u = list()
 
 
     def __init__(self,num_vari,num_parent):
         self.num_variable = num_vari
         self.max_parent_set = num_parent 
+        self.u_set_list = [list() for i in range(self.num_variable)]
         self.init_score_disc()
 
     def init_score_disc(self):
@@ -232,6 +234,7 @@ def making_QUBO(bayes):
         bayes.make_score_disc_i(num)
         w_i=make_W_set_of_i(bayes.score_disc_list[num],num,num_vari,max_parent_num)
         u_i =decomposition_of_i(w_i,num,max_parent_num)
+        bayes.u_set_list[num] = u_i
         #print(num,w_i)
         #print(num,u_i)
         s_list[num] = calc_s_of_i(u_i,w_i,bayes.score_disc_list[num],num)
@@ -284,16 +287,41 @@ def making_QUBO(bayes):
             qubo[count_c[j]+d][count_u + r_ij] += -delta2
             qubo[count_c[i]+d][count_c[i]+d] += delta2
     
+    bayes.count_len_of_u = len_of_u
 
 
+    
 
-    print(qubo)
+    return qubo
+
+def recreate(x,bayes):
+    parent_set_list = [tuple() for i in bayes.num_variable]
+    count_u = 0
+    for i in bayes.num_variable:
+        tcount = 0
+        s1 = set()
+    
+        for j in range(bayes.count_len_of_u[i]):
+            if x[count_u] == 1:
+                s1 =s1 | {i for i in bayes.u_set_list[i][j]}
+                tcount +=1
+        s1 = s1 - {i}
+        if tcount >2:
+                print('error in x')
+        parent_set_list[i] = tuple(np.sort([k for k in s1]))
+    
+    return parent_set_list
+        
+
+
+    
 
     return 0
 
-num_variable = 4
+num_variable = 9
 max_parent = 3
 bayes = Bayes(num_variable,max_parent)
 
-making_QUBO(bayes)
-
+QUBO =making_QUBO(bayes)
+recreate(1,bayes)
+#np.savetxt('qubo.csv',QUBO)

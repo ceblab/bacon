@@ -318,5 +318,4 @@ max_parent = 3
 bayes = Bayes(num_variable,max_parent)
 
 QUBO =making_QUBO(bayes)
-recreate(1,bayes)
-#np.savetxt('qubo.csv',QUBO)
+np.savetxt('qubo.csv',QUBO)

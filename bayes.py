@@ -155,7 +155,56 @@ def make_union_set_with_v(U_set,max_parent_set,v):
             union_U_set.add(set2)
             
     return union_U_set
+def calc_s_of_i(U_set,W_set,disc_of_i,child_vari):
+    s_disc = dict()
+    l = len(U_set)
+    empty_score = (disc_of_i[(child_vari,)])
+    for i in range(l):
+        for j in range(i,l):
+            if i ==0 & j == 0:
+                pair_ij = (child_vari,)
+            else:
+                set_i= {k for k in U_set[i]}
+                set_j = {k for k in U_set[j]}
+                set_ij = (set_i | set_j) - {child_vari}            
+                pair_ij = tuple(np.sort([k for k in set_ij]))
+            if i == 0:
+                s_disc[(child_vari,i,j)] = 0
 
+
+            elif(i == j):
+                if(pair_ij in W_set):
+                    s_disc[(child_vari,i,j)] = -(disc_of_i[pair_ij]) + empty_score
+                else:
+                    s_disc[(child_vari,i,j)] = 0
+            else:
+                if(pair_ij in W_set):
+                    if(U_set[i] in W_set):
+                        if(U_set[j] in W_set):
+                            s_disc[(child_vari,i,j)] = - (disc_of_i[pair_ij]) + (disc_of_i[U_set[i]]) +(disc_of_i[U_set[j]]) -empty_score
+                        else:
+                            s_disc[(child_vari,i,j)] = - (disc_of_i[pair_ij]) + (disc_of_i[U_set[i]])
+                    else:
+                        if(U_set[j] in W_set):
+                            s_disc[(child_vari,i,j)] = - (disc_of_i[pair_ij]) +(disc_of_i[U_set[j]])
+                        else:
+                            s_disc[(child_vari,i,j)] = - (disc_of_i[pair_ij]) + empty_score
+                else:
+                    if(U_set[i] in W_set):
+                        if(U_set[j] in W_set):
+                            s_disc[(child_vari,i,j)] = (disc_of_i[U_set[i]]) +(disc_of_i[U_set[j]]) - 2 * empty_score
+                        else:
+                            s_disc[(child_vari,i,j)] = - empty_score + (disc_of_i[U_set[i]])
+                    else:
+                        if(U_set[j] in W_set):
+                            s_disc[(child_vari,i,j)] = - empty_score +(disc_of_i[U_set[j]])
+                        else:
+                            s_disc[(child_vari,i,j)] = 0
+
+
+                            
+    return s_disc
+'''
 def calc_s_of_i(U_set,W_set,disc_of_i,child_vari):
     s_disc = dict()
     l = len(U_set)
@@ -205,7 +254,7 @@ def calc_s_of_i(U_set,W_set,disc_of_i,child_vari):
 
                             
     return s_disc
-
+'''
 def making_d_star(U_set,num_vari,child_vari):
     d_ij =[0 for i in range(num_vari)]
     for i in range(num_vari):
@@ -243,7 +292,8 @@ def making_QUBO(bayes):
         xi[num] = -3 * min_s
         d_star[num] = making_d_star(u_i,num_vari,num)
         len_of_u[num] = len(u_i)
-    qubo_size = int(sum(len_of_u) + num_vari + num_vari*(num_vari +1)/2)
+    qubo_size = int(sum(len_of_u)  + num_vari*(num_vari +1)/2)
+    print(qubo_size)
     qubo = np.zeros((qubo_size,qubo_size))
     count_u = 0
     delta1 =  - min(delta)
@@ -261,10 +311,12 @@ def making_QUBO(bayes):
         count_c[i] = count_u
         count_u = count_u + len_of_u[i]
     count_b = 0
+    #print(qubo)
     for i in range(num_vari):
         qubo[count_u][count_u] += xi[i]
         for j in range(len_of_u[i]):
-            qubo[count_u][j + count_b] += - xi[i]
+            qubo[j + count_b][count_u] += - xi[i]
+      
         count_b = count_b + len_of_u[i]
         count_u = count_u + 1
     
@@ -274,10 +326,13 @@ def making_QUBO(bayes):
         r_ij = i*num_vari - int(i*(i+1)/2) + j - i -1
         r_jk = j*num_vari - int(j*(j+1)/2) + k - j -1
         r_ik = i*num_vari - int(i*(i+1)/2) + k - i -1
+        
         qubo[count_u + r_ij][count_u + r_jk] += delta1
         qubo[count_u + r_ij][count_u + r_ik] += -delta1
         qubo[count_u + r_ik][count_u + r_jk] += -delta1
         qubo[count_u + r_ik][count_u + r_ik] += delta1
+    #print(22222)
+    #print(qubo)
     for conb in itertools.combinations(vari_list,2):
         i,j = conb
         r_ij = i*num_vari - int(i*(i+1)/2) + j - i -1
@@ -286,10 +341,11 @@ def making_QUBO(bayes):
         for d in d_star[j][i]:
             qubo[count_c[j]+d][count_u + r_ij] += -delta2
             qubo[count_c[i]+d][count_c[i]+d] += delta2
-    
+    #print(33333)
+    #print(qubo)
     bayes.count_len_of_u = len_of_u
 
-
+    
     
 
     return qubo
@@ -313,9 +369,10 @@ def recreate(x,bayes):
     return parent_set_list
 
 
-num_variable = 9
+num_variable = 10
 max_parent = 3
 bayes = Bayes(num_variable,max_parent)
 
 QUBO =making_QUBO(bayes)
-np.savetxt('qubo.csv',QUBO)
+
+np.savetxt('qubo.csv',QUBO,delimiter=',' ,fmt="%.i")

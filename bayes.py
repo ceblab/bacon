@@ -15,7 +15,7 @@ class Bayes:
     score_disc_list = list()
     u_set_list = list()
     count_len_of_u = list()
-
+    qubo_size = 0
 
     def __init__(self,num_vari,num_parent):
         self.num_variable = num_vari
@@ -293,6 +293,7 @@ def making_QUBO(bayes):
         d_star[num] = making_d_star(u_i,num_vari,num)
         len_of_u[num] = len(u_i)
     qubo_size = int(sum(len_of_u)  + num_vari*(num_vari +1)/2)
+    bayes.qubo_size = qubo_size
     print(qubo_size)
     qubo = np.zeros((qubo_size,qubo_size))
     count_u = 0
@@ -351,20 +352,24 @@ def making_QUBO(bayes):
     return qubo
 
 def recreate(x,bayes):
-    parent_set_list = [tuple() for i in bayes.num_variable]
+    parent_set_list = [tuple() for i in range(bayes.num_variable)]
     count_u = 0
-    for i in bayes.num_variable:
+    for i in range(bayes.num_variable):
         tcount = 0
         s1 = set()
-    
+        
         for j in range(bayes.count_len_of_u[i]):
             if x[count_u] == 1:
+                
                 s1 =s1 | {i for i in bayes.u_set_list[i][j]}
                 tcount +=1
+            count_u +=1
         s1 = s1 - {i}
+        
         if tcount >2:
-                print('error in x')
+                print('error in x',i)
         parent_set_list[i] = tuple(np.sort([k for k in s1]))
+        
     
     return parent_set_list
 
@@ -376,3 +381,14 @@ bayes = Bayes(num_variable,max_parent)
 QUBO =making_QUBO(bayes)
 
 np.savetxt('qubo.csv',QUBO,delimiter=',' ,fmt="%.i")
+x = [0 for i in range(bayes.qubo_size)]
+
+with open('minx.txt') as f:
+    for i in range(bayes.qubo_size):
+        x[i] = int(f.read(1))
+
+
+list =recreate(x,bayes)
+
+for i in range(bayes.num_variable):
+    print(i,'の親変数は',list[i],'です')

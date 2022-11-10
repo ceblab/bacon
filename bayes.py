@@ -276,6 +276,7 @@ def making_d_star(U_set,num_vari,child_vari):
                 if(i in set1):
                     p_list.append(j)
             d_ij[i]=tuple(p_list)
+    
     return d_ij
 
 
@@ -301,9 +302,10 @@ def making_QUBO(bayes):
         xi[num] = -3 * min_s+10 #下限をあげる
         d_star[num] = making_d_star(u_i,num_vari,num)
         len_of_u[num] = len(u_i)
+    #print(d_star)
     qubo_size = int(sum(len_of_u)  + num_vari*(num_vari +1)/2)
     bayes.qubo_size = qubo_size
-    print(qubo_size)
+    #print(qubo_size)
     qubo = np.zeros((qubo_size,qubo_size))
     count_u = 0
     delta1 =  - min(delta) + 10
@@ -314,18 +316,23 @@ def making_QUBO(bayes):
     for i in range(num_vari):
         for k , v in s_list[i].items():
             a,b,c = k
+            
             if b == c:
                 qubo[b+count_u][c + count_u] += v
+                #print((b+count_u,c + count_u))
             else:
                 qubo[b+count_u][c + count_u] += v + xi[i]
+                #print((b+count_u,c + count_u))
         count_c[i] = count_u
         count_u = count_u + len_of_u[i]
     count_b = 0
     #print(qubo)
     for i in range(num_vari):
         qubo[count_u][count_u] += xi[i]
+        #print(count_u)
         for j in range(len_of_u[i]):
             qubo[count_u][j + count_b] += - xi[i]#qubo[j + count_b][count_u] += - xi[i]
+            #print((count_u,j + count_b))
       
         count_b = count_b + len_of_u[i]
         count_u = count_u + 1
@@ -343,14 +350,16 @@ def making_QUBO(bayes):
         qubo[count_u + r_ik][count_u + r_ik] += delta1
     #print(22222)
     #print(qubo)
+    print(count_c)
     for conb in itertools.combinations(vari_list,2):
         i,j = conb
         r_ij = i*num_vari - int(i*(i+1)/2) + j - i -1
         for d in d_star[i][j]:
+            #print((count_c[i]+d,count_u + r_ij))
             qubo[count_c[i]+d][count_u + r_ij] += delta2
         for d in d_star[j][i]:
             qubo[count_c[j]+d][count_u + r_ij] += -delta2
-            qubo[count_c[i]+d][count_c[i]+d] += delta2
+            qubo[count_c[j]+d][count_c[j]+d] += delta2
     #print(33333)
     #print(qubo)
     bayes.count_len_of_u = len_of_u
@@ -387,7 +396,11 @@ num_variable = 10
 max_parent = 3
 bayes = Bayes(num_variable,max_parent)
 
+
+
 QUBO =making_QUBO(bayes)
+
+#print(bayes.score_disc_list)
 
 qubo_amp = BinaryMatrix(QUBO)
 

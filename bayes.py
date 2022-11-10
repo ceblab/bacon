@@ -1,11 +1,20 @@
 from calendar import c
-from re import L
+from re import L, M
 import numpy as np
 import itertools
 import copy
 import math
+from amplify import BinaryMatrix
+from amplify import BinarySymbolGenerator
+from amplify import (
+    BinaryPoly,
+    BinaryQuadraticModel,
+    Solver,
+    SymbolGenerator,
+)
+from amplify.client import FixstarsClient
 np.set_printoptions(threshold=np.inf)
-from regex import W
+#from regex import W
 
 np.random.seed(314)
 
@@ -289,7 +298,7 @@ def making_QUBO(bayes):
         s_list[num] = calc_s_of_i(u_i,w_i,bayes.score_disc_list[num],num)
         min_s = min(s_list[num].values())
         delta[num] = min_s
-        xi[num] = -3 * min_s
+        xi[num] = -3 * min_s+10 #下限をあげる
         d_star[num] = making_d_star(u_i,num_vari,num)
         len_of_u[num] = len(u_i)
     qubo_size = int(sum(len_of_u)  + num_vari*(num_vari +1)/2)
@@ -297,8 +306,8 @@ def making_QUBO(bayes):
     print(qubo_size)
     qubo = np.zeros((qubo_size,qubo_size))
     count_u = 0
-    delta1 =  - min(delta)
-    delta2 = (num_vari - 2) * delta1
+    delta1 =  - min(delta) + 10
+    delta2 = (num_vari - 2) * delta1 +1
     count_c=[0 for i in range(num_vari)]
     #print(s_list[0])
     #print(d_star)
@@ -316,7 +325,7 @@ def making_QUBO(bayes):
     for i in range(num_vari):
         qubo[count_u][count_u] += xi[i]
         for j in range(len_of_u[i]):
-            qubo[j + count_b][count_u] += - xi[i]
+            qubo[count_u][j + count_b] += - xi[i]#qubo[j + count_b][count_u] += - xi[i]
       
         count_b = count_b + len_of_u[i]
         count_u = count_u + 1
@@ -380,15 +389,33 @@ bayes = Bayes(num_variable,max_parent)
 
 QUBO =making_QUBO(bayes)
 
-np.savetxt('qubo.csv',QUBO,delimiter=',' ,fmt="%.i")
-x = [0 for i in range(bayes.qubo_size)]
+qubo_amp = BinaryMatrix(QUBO)
 
-with open('minx.txt') as f:
-    for i in range(bayes.qubo_size):
-        x[i] = int(f.read(1))
+# イジングマシンクライアントの設定
+client = FixstarsClient()
+client.token = "bGezdYx88VisgcbxBgmpP7i0ferFQiZG"
+client.parameters.timeout = 1000  # タイムアウト1秒
 
+# ソルバーの実行
+solver = Solver(client)
+result = solver.solve(qubo_amp)
+gen = SymbolGenerator(BinaryPoly) 
+q = gen.array(bayes.qubo_size)
+# 結果の解析
+kai = q.decode(result[0].values)
+for solution in result:
+    print(f"q = {q.decode(solution.values)}")
 
-list =recreate(x,bayes)
+kai_int =[int(i) for i in kai]
+#np.savetxt('qubo.csv',QUBO,delimiter=',' ,fmt="%.i")
+#x = [0 for i in range(bayes.qubo_size)]
+
+#with open('minx.txt') as f:
+#    for i in range(bayes.qubo_size):
+#        x[i] = int(f.read(1))
+print(kai_int)
+
+list =recreate(kai_int,bayes)
 
 for i in range(bayes.num_variable):
     print(i,'の親変数は',list[i],'です')

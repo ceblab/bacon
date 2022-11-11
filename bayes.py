@@ -4,6 +4,8 @@ import numpy as np
 import itertools
 import copy
 import math
+import csv
+import pprint
 from amplify import BinaryMatrix
 from amplify import BinarySymbolGenerator
 from amplify import (
@@ -420,15 +422,31 @@ for solution in result:
     print(f"q = {q.decode(solution.values)}")
 
 kai_int =[int(i) for i in kai]
-#np.savetxt('qubo.csv',QUBO,delimiter=',' ,fmt="%.i")
-#x = [0 for i in range(bayes.qubo_size)]
+np.savetxt('qubo.csv',QUBO,delimiter=',' ,fmt="%.i")
 
-#with open('minx.txt') as f:
-#    for i in range(bayes.qubo_size):
-#        x[i] = int(f.read(1))
+with open('qubo_sample.csv','w') as f:
+    writer = csv.writer(f)
+    for i in range(bayes.qubo_size):
+         writer.writerow(QUBO[i][i::])
+
+
+x = [0 for i in range(bayes.qubo_size)]
+
+with open('minx.txt') as f:
+    for i in range(bayes.qubo_size):
+        x[i] = int(f.read(1))
 print(kai_int)
+#for i  in range(len(kai_int)):
+    #print(kai_int[i],end='')
 
 list =recreate(kai_int,bayes)
+list2=recreate(kai_int,bayes)
+
+print('')
 
 for i in range(bayes.num_variable):
     print(i,'の親変数は',list[i],'です')
+
+
+for i in range(bayes.num_variable):
+    print(i,'の親変数は',list2[i],'です_sample')

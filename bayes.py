@@ -432,15 +432,15 @@ with open('qubo_sample.csv','w') as f:
 
 x = [0 for i in range(bayes.qubo_size)]
 
-with open('minx.txt') as f:
-    for i in range(bayes.qubo_size):
-        x[i] = int(f.read(1))
+#with open('minx.txt') as f:
+    #for i in range(bayes.qubo_size):
+        #x[i] = int(f.read(1))
 print(kai_int)
 #for i  in range(len(kai_int)):
     #print(kai_int[i],end='')
 
 list =recreate(kai_int,bayes)
-list2=recreate(kai_int,bayes)
+#list2=recreate(kai_int,bayes)
 
 print('')
 
@@ -448,5 +448,5 @@ for i in range(bayes.num_variable):
     print(i,'の親変数は',list[i],'です')
 
 
-for i in range(bayes.num_variable):
-    print(i,'の親変数は',list2[i],'です_sample')
+#for i in range(bayes.num_variable):
+    #print(i,'の親変数は',list2[i],'です_sample')

@@ -167,18 +167,23 @@ def make_union_set_with_v(U_set,max_parent_set,v):
             
     return union_U_set
 def calc_s_of_i(U_set,W_set,disc_of_i,child_vari):
+    print(U_set)
     s_disc = dict()
     l = len(U_set)
     empty_score = (disc_of_i[(child_vari,)])
     for i in range(l):
         for j in range(i,l):
-            if i ==0 & j == 0:
+            if i ==0 and j == 0:
                 pair_ij = (child_vari,)
             else:
                 set_i= {k for k in U_set[i]}
                 set_j = {k for k in U_set[j]}
                 set_ij = (set_i | set_j) - {child_vari}            
                 pair_ij = tuple(np.sort([k for k in set_ij]))
+                print(child_vari)
+                print(set_i)
+                print(set_j)
+                print(set_ij)
             if i == 0:
                 s_disc[(child_vari,i,j)] = 0
 
@@ -212,7 +217,7 @@ def calc_s_of_i(U_set,W_set,disc_of_i,child_vari):
                         else:
                             s_disc[(child_vari,i,j)] = 0
 
-
+    print(s_disc)
                             
     return s_disc
 '''
@@ -321,10 +326,10 @@ def making_QUBO(bayes):
             
             if b == c:
                 qubo[b+count_u][c + count_u] += v
-                #print((b+count_u,c + count_u))
+                print((b+count_u,c + count_u),v)
             else:
                 qubo[b+count_u][c + count_u] += v + xi[i]
-                #print((b+count_u,c + count_u))
+                print((b+count_u,c + count_u),v)
         count_c[i] = count_u
         count_u = count_u + len_of_u[i]
     count_b = 0
@@ -394,7 +399,7 @@ def recreate(x,bayes):
     return parent_set_list
 
 
-num_variable = 10
+num_variable = 4
 max_parent = 3
 bayes = Bayes(num_variable,max_parent)
 

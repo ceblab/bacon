@@ -21,9 +21,9 @@ from pgmpy.sampling import BayesianModelSampling
 from scipy.special import gammaln
 np.set_printoptions(threshold=np.inf)
 #from regex import W
-
+from pgmpy.estimators import BDeuScore
 np.random.seed(314)
-
+from pgmpy.models import BayesianNetwork
 class Bayes:
     variable_list = list()
     status_list = dict()
@@ -36,6 +36,7 @@ class Bayes:
     u_set_list = list()
     count_len_of_u = list()
     qubo_size = 0
+    
 
 
     def __init__(self,bif_file,num_parent,bdeu_arufa):
@@ -63,7 +64,7 @@ class Bayes:
         a_ijk = self.bdeu_a / ganma
         n_list = [0 for i in range(ganma)]
         a_list = [a_ijk for i in range(ganma)]
-        s = gammaln(self.bdeu_a) - gammaln(len(self.data_set)+1)
+        s = gammaln(self.bdeu_a) - gammaln(len(self.data_set)+self.bdeu_a)
 
         for i in range(ganma):
             N_ijk = (self.data_set[colum_name] == child_status_list[i]).sum()
@@ -176,13 +177,22 @@ class Bayes:
         return s
 
     def make_score_disc_i(self,child_vari):
-        self.score_disc_list[child_vari][(child_vari,)] = self.score_kara(child_vari)
+        #self.score_disc_list[child_vari][(child_vari,)] = self.score_kara(child_vari)
+        #vari_list = [i for i in range(self.num_variable) if i != child_vari]
+
+        #for m in range(1, self.max_parent_set + 1):
+        #    for conb in itertools.combinations(vari_list,m ):
+        #        
+        #        self.score_disc_list[child_vari][conb] = self.score(conb,child_vari)
+        ##debug
+        bdeu = BDeuScore(self.data_set, equivalent_sample_size=5)
+        self.score_disc_list[child_vari][(child_vari,)] = bdeu.local_score(self.variable_list[child_vari], parents=[])
         vari_list = [i for i in range(self.num_variable) if i != child_vari]
 
         for m in range(1, self.max_parent_set + 1):
             for conb in itertools.combinations(vari_list,m ):
-                
-                self.score_disc_list[child_vari][conb] = self.score(conb,child_vari)
+                parent_list = [self.variable_list[i] for i in conb]
+                self.score_disc_list[child_vari][conb] = bdeu.local_score(self.variable_list[child_vari], parents=parent_list)
 
 
 def make_W_set_of_i(disc_of_i,child_vari,num_variable,max_parent_set):
@@ -303,7 +313,7 @@ def calc_s_of_i(U_set,W_set,disc_of_i,child_vari):
     empty_score = (disc_of_i[(child_vari,)])
     for i in range(l):
         for j in range(i,l):
-            if i ==0 & j == 0:
+            if i ==0 and j == 0:
                 pair_ij = (child_vari,)
             else:
                 set_i= {k for k in U_set[i]}
@@ -422,15 +432,26 @@ def making_QUBO(bayes):
     delta = [0 for i in range(num_vari)]
     d_star =[list() for j in range(num_vari)]
     s_list = [dict() for i in range(num_vari)]
+    #debug
+    #u_list = [list() for j in range(num_vari)]
+    #debug ijou
     for num in range(num_vari):
+        print(num,'calc A')
         bayes.make_score_disc_i(num)
+        
         w_i=make_W_set_of_i(bayes.score_disc_list[num],num,num_vari,max_parent_num)
+        
         #print(w_i) #debug
         u_i =decomposition_of_i(w_i,num,max_parent_num)
+        #debug
+        #u_list[num] = u_i
+        #debug ijou
         bayes.u_set_list[num] = u_i
+        
         #print(num,w_i)
-        #print(num,u_i)
+        print(num,u_i)
         s_list[num] = calc_s_of_i(u_i,w_i,bayes.score_disc_list[num],num)
+        
         min_s = min(s_list[num].values())
         delta[num] = min_s
         xi[num] = -3 * min_s+10 #下限をあげる
@@ -453,15 +474,16 @@ def making_QUBO(bayes):
             
             if b == c:
                 qubo[b+count_u][c + count_u] += v
-                #print((b+count_u,c + count_u))
+                #print((b+count_u,c + count_u),v,u_list[i][b],u_list[i][c])
             else:
                 qubo[b+count_u][c + count_u] += v + xi[i]
-                #print((b+count_u,c + count_u))
+                #print((b+count_u,c + count_u),v,u_list[i][b],u_list[i][c])
         count_c[i] = count_u
         count_u = count_u + len_of_u[i]
     count_b = 0
     #print(qubo)
     for i in range(num_vari):
+        print(i,'calc B')
         qubo[count_u][count_u] += xi[i]
         #print(count_u)
         for j in range(len_of_u[i]):
@@ -504,7 +526,8 @@ def making_QUBO(bayes):
     return qubo
 
 def recreate(x,bayes):
-    parent_set_list = [tuple() for i in range(bayes.num_variable)]
+    parent_set_list = [list() for i in range(bayes.num_variable)]
+    vari_list = bayes.variable_list
     count_u = 0
     for i in range(bayes.num_variable):
         tcount = 0
@@ -520,10 +543,18 @@ def recreate(x,bayes):
         
         if tcount >2:
                 print('error in x',i)
-        parent_set_list[i] = tuple(np.sort([k for k in s1]))
-        
-    
-    return parent_set_list
+        parent_set_list[i] = list(np.sort([k for k in s1]))
+    print(parent_set_list)
+    re_list =  [list() for i in range(bayes.num_variable)]
+    for i in range(len(parent_set_list)):
+        st_list = [vari_list[j] for j in parent_set_list[i]]
+        re_list[i] = st_list
+    if judge_dag(parent_set_list):
+        print('dagである')
+    else:
+        print('dagではない')
+
+    return re_list
 
 def interpret_parent(parent_set_list,bayes):
     vari_lsit = bayes.variable_list
@@ -532,8 +563,48 @@ def interpret_parent(parent_set_list,bayes):
 
 
     return
+def judge_dag(parent_set_list):
+    leng = len(parent_set_list)
+    topological = list()
+    void_q = list()
+    judge = True
+    for u in range(leng):
+        for i in range(leng):
+            if len(parent_set_list[i] )== 0:
+                void_q.append(i)
+                parent_set_list[i].append(-1)
+        if len(void_q) == 0:
+            print('dagではない')
+            judge = False
+            break
+        x = void_q.pop(0)
+        topological.append(x)
+        for v in range(leng):
+            if x in parent_set_list[v]:
+                parent_set_list[v].remove(x)
+        
+    
+    return judge
 
-
+def eval_bay(bayes,re_list):
+    vari_list = bayes.variable_list
+    bdeu = BDeuScore(bayes.data_set, equivalent_sample_size=5)
+    model_max =BayesianNetwork([('asia','tub'),('tub','either'),('smoke','lung'),('smoke','bronc'),('either','xray'),('either','dysp'),('bronc','dysp')])
+    max_bdeu = bdeu.score(model_max)
+    calc_model = []
+    a = []
+    for i in range(len(vari_list)):
+        a = [(vari_list[i],re_list[i][j]) for j in range(len(re_list[i]))]
+        calc_model.extend(a)
+        a = []
+    calc_model=BayesianNetwork(calc_model)
+    calc_bdeu = bdeu.score(calc_model)
+    
+    print('max_bdeu',max_bdeu)
+    print('calc_bdeu',calc_bdeu)
+    print('割合',calc_bdeu/max_bdeu)
+    print('ここのスコアは高いほうがよい')
+    return
 max_parent = 3
 bayes = Bayes('asia.bif',max_parent,1)
 
@@ -582,12 +653,16 @@ list =recreate(kai_int,bayes)
 #list2=recreate(kai_int,bayes)
 
 print('')
-
+kai_np = np.array(kai_int)
+print('score',np.dot(np.dot((kai_np),QUBO ), (kai_np.T)))
 for i in range(bayes.num_variable):
-    print(i,'の親変数は',list[i],'です')
-print(bayes.variable_list)
+    
+     print(bayes.variable_list[i],'の親変数は',list[i],'です')
+eval_bay(bayes,list)
+#print(bayes.variable_list)
 
 #for i in range(bayes.num_variable):
     #print(i,'の親変数は',list2[i],'です_sample')
 
 #print(bayes.score_disc_list)
+print(bayes.variable_list)

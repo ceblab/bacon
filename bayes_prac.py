@@ -1,10 +1,27 @@
-from pgmpy.readwrite import BIFReader
-from pgmpy.sampling import BayesianModelSampling
-reader = BIFReader("asia.bif")
+def judge_dag(parent_set_list):
+    leng = len(parent_set_list)
+    topological = list()
+    void_q = list()
+    judge = True
+    for u in range(leng):
+        for i in range(leng):
+            if len(parent_set_list[i] )== 0:
+                void_q.append(i)
+                parent_set_list[i].append(-1)
+        if len(void_q) == 0:
+            print('dagではない')
+            judge = False
+            break
+        x = void_q.pop(0)
+        topological.append(x)
+        for v in range(leng):
+            if x in parent_set_list[v]:
+                parent_set_list[v].remove(x)
+        print(void_q)
+        print(parent_set_list)
+    
+    return judge
 
-samples = BayesianModelSampling(reader.get_model()).forward_sample(size=int(1e3))
-#print(samples.head())
-print((samples['asia'] == 'no'))
-print((samples['asia'] == 'yes').sum())
-#print(reader.get_variables())#変数名と変数番号の対応表になる
-#print(reader .get_states())
+parent_set_list = [[], [2],[1]]
+
+print(judge_dag(parent_set_list))

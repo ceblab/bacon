@@ -334,6 +334,7 @@ def make_union_set_with_v(U_set,max_parent_set,v):
             
     return union_U_set
 def calc_s_of_i(U_set,W_set,disc_of_i,child_vari):
+    weight = 1000
     s_disc = dict()
     l = len(U_set)
     W_set_check_list = dict()
@@ -376,14 +377,14 @@ def calc_s_of_i(U_set,W_set,disc_of_i,child_vari):
                 else:
                     if(U_set[i] in W_set):
                         if(U_set[j] in W_set):
-                            s_disc[(child_vari,i,j)] = (disc_of_i[U_set[i]]) +(disc_of_i[U_set[j]]) - 2 * empty_score
+                            s_disc[(child_vari,i,j)] = (disc_of_i[U_set[i]]) +(disc_of_i[U_set[j]]) - 2 * empty_score + weight
                         else:
-                            s_disc[(child_vari,i,j)] = - empty_score + (disc_of_i[U_set[i]])
+                            s_disc[(child_vari,i,j)] = - empty_score + (disc_of_i[U_set[i]]) + weight
                     else:
                         if(U_set[j] in W_set):
-                            s_disc[(child_vari,i,j)] = - empty_score +(disc_of_i[U_set[j]])
+                            s_disc[(child_vari,i,j)] = - empty_score +(disc_of_i[U_set[j]]) + weight
                         else:
-                            s_disc[(child_vari,i,j)] = 0
+                            s_disc[(child_vari,i,j)] = 0 + weight
 
 
                             
@@ -464,6 +465,7 @@ def making_QUBO(bayes):
     delta = [0 for i in range(num_vari)]
     d_star =[list() for j in range(num_vari)]
     s_list = [dict() for i in range(num_vari)]
+    i_in_u_list = [list() for i in range(num_vari)]
     #debug
     #u_list = [list() for j in range(num_vari)]
     #debug ijou
@@ -478,6 +480,7 @@ def making_QUBO(bayes):
         #print(w_i) #debug
         print('start decomposition')
         u_i =decomposition_of_i(w_i,num,max_parent_num)
+        i_in_u_list[num] = make_i_in_u_set(u_i,num_vari)
         print('end decomposition')
         #debug
         #u_list[num] = u_i
@@ -534,7 +537,20 @@ def making_QUBO(bayes):
       
         count_b = count_b + len_of_u[i]
         count_u = count_u + 1
-    
+    ####################################
+    #2cycle wo jogai suru
+    for i in range(num_vari):
+        u_set_of_i = bayes.u_set_list[i]
+        for j in range(1,len(u_set_of_i)):
+            for k in u_set_of_i[j]:
+                    if i < k:
+                        for l in i_in_u_list[k][i]:
+                            qubo[count_c[i] + j][count_c[k] +l] = xi[i]
+                
+            
+
+    ###################################
+    '''
     vari_list = [i for i in range(num_vari)]
     for conb in itertools.combinations(vari_list,3):
         i,j,k = conb
@@ -560,6 +576,7 @@ def making_QUBO(bayes):
             qubo[count_c[j]+d][count_c[j]+d] += delta2
     #print(33333)
     #print(qubo)
+    '''
     bayes.count_len_of_u = len_of_u
 
     
@@ -594,9 +611,10 @@ def recreate(x,bayes):
         re_list[i] = st_list
     if judge_dag(parent_set_list):
         print('dagである')
+        eval_bay(bayes,re_list)
     else:
         print('dagではない')
-
+    judge_2cycle(parent_set_list)
     return re_list
 
 def interpret_parent(parent_set_list,bayes):
@@ -617,7 +635,7 @@ def judge_dag(parent_set_list):
                 void_q.append(i)
                 parent_set_list[i].append(-1)
         if len(void_q) == 0:
-            print('dagではない')
+            
             judge = False
             break
         x = void_q.pop(0)
@@ -634,12 +652,16 @@ def judge_2cycle(parent_set_list):
     leng = len(parent_set_list)
     for i in range(leng):
         parent_set = parent_set_list[i]
-        for j in range(parent_set):
+        for j in range(len(parent_set)):
             if i in parent_set_list[parent_set[j]]:
                 judge = False
+    if judge:
+        print('2cycle nashi')
+    else:
+        print('2cycle ari')
     return judge
 
-def i_in_u_set(u_set,len_of_vari):
+def make_i_in_u_set(u_set,len_of_vari):
     i_in_u =[list() for i in range(len_of_vari)]
     for i in range(len(u_set)):
         for j in u_set[i]:
@@ -725,7 +747,7 @@ print('score',np.dot(np.dot((kai_np),QUBO ), (kai_np.T)))
 for i in range(bayes.num_variable):
     
      print(bayes.variable_list[i],'の親変数は',list[i],'です')
-eval_bay(bayes,list)
+#eval_bay(bayes,list)
 #print(bayes.variable_list)
 
 #for i in range(bayes.num_variable):

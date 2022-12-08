@@ -629,6 +629,24 @@ def judge_dag(parent_set_list):
     
     return judge
 
+def judge_2cycle(parent_set_list):
+    judge = True
+    leng = len(parent_set_list)
+    for i in range(leng):
+        parent_set = parent_set_list[i]
+        for j in range(parent_set):
+            if i in parent_set_list[parent_set[j]]:
+                judge = False
+    return judge
+
+def i_in_u_set(u_set,len_of_vari):
+    i_in_u =[list() for i in range(len_of_vari)]
+    for i in range(len(u_set)):
+        for j in u_set[i]:
+            i_in_u[j].append(i)
+    return i_in_u
+
+
 def eval_bay(bayes,re_list):
     vari_list = bayes.variable_list
     bdeu = BDeuScore(bayes.data_set, equivalent_sample_size=5)

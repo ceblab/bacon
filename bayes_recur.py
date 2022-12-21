@@ -50,6 +50,7 @@ class Bayes:
         self.u_set_list = [list() for i in range(self.num_variable)]
         self.init_score_disc()
         self.max_model = reader.get_model()
+        self.max_w_list = [0 for i in range(self.num_variable)]
 
     def init_score_disc(self):
         self.score_disc_list = [dict() for i in range(self.num_variable)]
@@ -466,6 +467,7 @@ def making_QUBO(bayes):
     d_star =[list() for j in range(num_vari)]
     s_list = [dict() for i in range(num_vari)]
     i_in_u_list = [list() for i in range(num_vari)]
+    max_w_list = [0 for i in range(num_vari)]
     #debug
     #u_list = [list() for j in range(num_vari)]
     #debug ijou
@@ -473,6 +475,7 @@ def making_QUBO(bayes):
         print(num,'calc A')
         print('start make score disc')
         bayes.make_score_disc_i(num)
+        max_w_list[num] = max(bayes.score_disc_list[num].values())
         print('end make score disc')
         print('start make_W_set_of_i')
         w_i=make_W_set_of_i(bayes.score_disc_list[num],num,num_vari,max_parent_num)
@@ -578,7 +581,7 @@ def making_QUBO(bayes):
     #print(qubo)
     '''
     bayes.count_len_of_u = len_of_u
-
+    bayes.max_w_list = max_w_list
     
     
 
@@ -626,8 +629,8 @@ def interpret_parent(parent_set_list,bayes):
     return
 def judge_dag(parent_set_list):
     leng = len(parent_set_list)
-    topological = list()
-    void_q = list()
+    topological = []
+    void_q = []
     judge = True
     for u in range(leng):
         for i in range(leng):
@@ -672,10 +675,12 @@ class preli_graph:
     node_time_stamp= list()
     child_set_list = list()
     parent_set_list = list()
-    scc_tree = list()
+    scc_tree = []
     time=0
     num_node = 0
     def __init__(self,num_nodes,parent_list):
+        self.time = 0
+        self.scc_tree = []
         self.parent_set_list = parent_list
         self.num_node = num_nodes
         self.node_status_list = [0 for i in range(num_nodes)]##0 -> white, 1 -> gray, 2 -> black
@@ -691,11 +696,11 @@ class preli_graph:
         for i in range(self.num_node):
             if self.node_status_list[i] == 0:
                 self.dfs(i)
-        print(self.node_time_stamp)##
+        ##print(self.node_time_stamp)##
         time_list = np.array(self.node_time_stamp)
         time_list = np.argsort((-time_list))
         self.node_status_list = [0 for i in range(self.num_node)]
-        print(time_list)
+        ##print(time_list)
         for i in time_list:
             if self.node_status_list[i] == 0:
                 self.dfs_t(i)
@@ -808,19 +813,22 @@ for i in range(bayes.num_variable):
     #print(i,'の親変数は',list2[i],'です_sample')
 
 #print(bayes.score_disc_list)
-print(bayes.variable_list)
-example_parent_set_list =[[1],[0],[0,7],[1,2],[6],[4],[5],[2,5,6]]
-graph = preli_graph(len(example_parent_set_list),example_parent_set_list)
-print(graph.scc_tree)
+#print(bayes.variable_list)
+#example_parent_set_list =[[1],[0],[0,7],[1,2],[6],[4],[5],[2,5,6]]
+#graph = preli_graph(len(example_parent_set_list),example_parent_set_list)
+#print(graph.scc_tree)
 
 class Branch_and_Bound:
-    QUBO = np.array()
+    
     uppor_bound =0
-    chosen_list = list()
-    number_of_steps = 0
-    branch_list = list()
-    kai_list = list()
+    chosen_list = []#eranda mono
+    steps = -1#ima nandanme no branch ka
+    branch_list = []#erabu list no list
+    kai_list = [] #kai no list
+    kai_parent_set = []
     weight = 1000
+    preli_kai = []
+    kaikikae = [] #kaikikaeta list
     def __init__(self,bayes,Qubo):
         self.QUBO = Qubo
         self.Bay = bayes
@@ -828,6 +836,13 @@ class Branch_and_Bound:
         client.token = "bGezdYx88VisgcbxBgmpP7i0ferFQiZG"
         client.parameters.timeout = 1000  # タイムアウト1秒
         self.solver = Solver(client)
+        self.count_sum_len_of_u = [0 for i in range(bayes.num_variable)]
+        sum = 0
+        for i in range(bayes.num_variable):
+            self.count_sum_len_of_u[i] = sum
+            sum += bayes.count_len_of_u[i]
+        print('sum len of u',self.count_sum_len_of_u)
+        
 
     def qubo_result(self,Qubo):
         qubo_amp = BinaryMatrix(Qubo)
@@ -839,7 +854,7 @@ class Branch_and_Bound:
         return kai_int
     
     def make_parent_set_list(self,x):
-        parent_set = [list() for i in range(self.Bay.num_variable)]
+        parent_set = [[] for i in range(self.Bay.num_variable)]
         count_u = 0
         for i in range(self.Bay.num_variable):
             tcount = 0
@@ -855,43 +870,105 @@ class Branch_and_Bound:
         
             if tcount >2:
                 print('error in x',i)
-            parent_set[i] = list(np.sort([k for k in s1]))
+            parent_set[i] = (np.sort([k for k in s1])).tolist()
         return parent_set
     
-    def preli_qubo(self):
-        for i in range(len(self.chosen_list)):
-            ban = self.chosen_list[i]
+    def next_qubo(self):
+        cont = True
+        if len(self.branch_list[self.steps]) > self.chosen_list[self.steps] +1:
+            self.chosen_list[self.steps] = self.chosen_list[self.steps] +1
+            a,b,value = self.kaikikae.pop()
+            self.QUBO[a][b] = value
+            ban = self.branch_list[self.steps][self.chosen_list[self.steps]]
+            ban_domain = self.count_sum_len_of_u[ban]
+            kai_ban = self.kai_list[self.steps]
+            kai_1 = [j for j ,x in enumerate(kai_ban) if x == 1 and ban_domain <= j < ban_domain + self.Bay.count_len_of_u[ban]]
+            kai_1 = np.array(kai_1)
+            kai_1 = np.sort(kai_1)
+            if len(kai_1) >2:
+                print('error occur')
+            
+            self.kaikikae.append((kai_1[0],kai_1[1],self.QUBO[kai_1[0]][kai_1[1]]))
+            self.QUBO[kai_1[0]][kai_1[1]] += self.weight + self.Bay.max_w_list[ban] - self.Bay.score_disc_list[ban][(ban,)]
+        else:
+            if self.steps == -1:
+                cont = False
+            else:
 
-        return 
+                a,b,value = self.kaikikae.pop()
+                self.QUBO[a][b] = value
+                self.chosen_list.pop()
+                self.branch_list.pop()
+                self.kai_list.pop()
+                self.steps = self.steps -1
+                self.next_qubo()
+
+        
+
+
+        return cont
     
 
     def depthsf(self):
-        qubo = self.preli_qubo()
-        qubo_result =self.qubo_result(qubo)
+        print('step',self.steps)
+        qubo_result =self.qubo_result(self.QUBO)
         parent_set = self.make_parent_set_list(qubo_result)
         qubo_result_np = np.array(qubo_result)
-        pre_score = np.dot(np.dot((qubo_result_np),qubo), (qubo_result_np.T))
-        min_cycle = list()
+        pre_score = np.dot(np.dot((qubo_result_np),self.QUBO), (qubo_result_np.T))
+        min_cycle = []
         min_cycle_num = len(parent_set) +1
         if pre_score >= self.uppor_bound:
-            i = 1 ##iroiroyaru
+            if self.next_qubo():
+                self.depthsf()
+
         else:
             if judge_dag(parent_set):
-                i = 1 ##iroiroyaru
+                self.uppor_bound = pre_score
+                self.preli_kai = qubo_result
+                self.kai_parent_set = parent_set
+                if self.next_qubo():
+                    self.depthsf()
             else:
+                self.steps = self.steps + 1
                 pre_graph = preli_graph(len(parent_set),parent_set)
                 woods = pre_graph.scc_tree
                 for tree in woods:
-                    if min_cycle_num > len(tree):
+                    if min_cycle_num > len(tree) >1:
                         min_cycle = tree
+                self.kai_list.append(qubo_result)
+                self.branch_list.append(min_cycle)
+                self.chosen_list.append(0)
+                ban = min_cycle[0]
+                ban_domain = self.count_sum_len_of_u[ban]
                 
-                #iroiroyaru
+                print(woods)
+                print(min_cycle)
+                kai_ban = self.kai_list[self.steps]
+                kai_1 = [j for j ,x in enumerate(kai_ban) if x == 1 and ban_domain <= j < ban_domain + self.Bay.count_len_of_u[ban]]
+                kai_1 = np.array(kai_1)
+                kai_1 = np.sort(kai_1)
 
-
+                print('lenkai',len(kai_1))
+                print(kai_ban)
+                print('kai_1',kai_1)
+                print('tuika',(kai_1[0],kai_1[1],self.QUBO[kai_1[0]][kai_1[1]]))
+                if len(kai_1) >2:
+                    print('error occur')
+                self.kaikikae.append((kai_1[0],kai_1[1],self.QUBO[kai_1[0]][kai_1[1]]))
                 
-
+                
+                #print(self.QUBO[0][0])
+                #print(self.QUBO[kai_1[0]][kai_1[0]])
+                #print(self.QUBO[kai_1[1]][kai_1[1]])
+                
+                
+                self.QUBO[kai_1[0]][kai_1[1]] += self.weight + self.Bay.max_w_list[ban] - self.Bay.score_disc_list[ban][(ban,)]          
+                self.depthsf()
 
 
         return
 
 
+bab = Branch_and_Bound(bayes,QUBO)
+bab.depthsf()
+print(bab.kai_parent_set)

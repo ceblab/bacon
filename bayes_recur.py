@@ -615,7 +615,7 @@ def recreate(x,bayes):
     else:
         print('dagではない')
     judge_2cycle(parent_set_list)
-    return re_list
+    return re_list,parent_set_list
 
 def interpret_parent(parent_set_list,bayes):
     vari_lsit = bayes.variable_list
@@ -667,8 +667,62 @@ def make_i_in_u_set(u_set,len_of_vari):
         for j in u_set[i]:
             i_in_u[j].append(i)
     return i_in_u
+class preli_graph:
+    node_status_list = list()
+    node_time_stamp= list()
+    child_set_list = list()
+    parent_set_list = list()
+    scc_tree = list()
+    time=0
+    num_node = 0
+    def __init__(self,num_nodes,parent_list):
+        self.parent_set_list = parent_list
+        self.num_node = num_nodes
+        self.node_status_list = [0 for i in range(num_nodes)]##0 -> white, 1 -> gray, 2 -> black
+        self.node_time_stamp = [0 for i in range(num_nodes)]
+        self.child_set_list = [[] for i in range(num_nodes)]
+        for i in range(num_nodes):
+            parent_set_of_i = self.parent_set_list[i]
+            for j in range(len(parent_set_of_i)):
+                self.child_set_list[parent_set_of_i[j]].append(i)
+        self.scc()
+
+    def scc(self):
+        for i in range(self.num_node):
+            if self.node_status_list[i] == 0:
+                self.dfs(i)
+        print(self.node_time_stamp)##
+        time_list = np.array(self.node_time_stamp)
+        time_list = np.argsort((-time_list))
+        self.node_status_list = [0 for i in range(self.num_node)]
+        print(time_list)
+        for i in time_list:
+            if self.node_status_list[i] == 0:
+                self.dfs_t(i)
+                tree_list =[i for i ,x in enumerate(self.node_status_list) if x == 2]
+                for j in tree_list:
+                    self.node_status_list[j] = 3
+                self.scc_tree.append(tree_list)
 
 
+        return
+    def dfs_t(self,node):
+        self.node_status_list[node] = 1
+        for i in self.parent_set_list[node]:
+            if self.node_status_list[i] == 0:
+                self.dfs_t(i)
+        self.node_status_list[node] = 2
+        return
+    def dfs(self,node):
+        self.node_status_list[node] = 1
+        for i in self.child_set_list[node]:
+            if self.node_status_list[i] == 0:
+                self.dfs(i)
+        self.node_status_list[node] = 2
+        self.time = self.time + 1
+        self.node_time_stamp[node] = self.time
+        
+        return
 def eval_bay(bayes,re_list):
     vari_list = bayes.variable_list
     bdeu = BDeuScore(bayes.data_set, equivalent_sample_size=5)
@@ -738,7 +792,7 @@ print(kai_int)
 #for i  in range(len(kai_int)):
     #print(kai_int[i],end='')
 
-list =recreate(kai_int,bayes)
+list,parent_set_list =recreate(kai_int,bayes)
 #list2=recreate(kai_int,bayes)
 
 print('')
@@ -755,3 +809,89 @@ for i in range(bayes.num_variable):
 
 #print(bayes.score_disc_list)
 print(bayes.variable_list)
+example_parent_set_list =[[1],[0],[0,7],[1,2],[6],[4],[5],[2,5,6]]
+graph = preli_graph(len(example_parent_set_list),example_parent_set_list)
+print(graph.scc_tree)
+
+class Branch_and_Bound:
+    QUBO = np.array()
+    uppor_bound =0
+    chosen_list = list()
+    number_of_steps = 0
+    branch_list = list()
+    kai_list = list()
+    weight = 1000
+    def __init__(self,bayes,Qubo):
+        self.QUBO = Qubo
+        self.Bay = bayes
+        client = FixstarsClient()
+        client.token = "bGezdYx88VisgcbxBgmpP7i0ferFQiZG"
+        client.parameters.timeout = 1000  # タイムアウト1秒
+        self.solver = Solver(client)
+
+    def qubo_result(self,Qubo):
+        qubo_amp = BinaryMatrix(Qubo)
+        result = self.solver.solve(qubo_amp)
+        gen = SymbolGenerator(BinaryPoly) 
+        q = gen.array(self.Bay.qubo_size)
+        kai = q.decode(result[0].values)
+        kai_int =[int(i) for i in kai]
+        return kai_int
+    
+    def make_parent_set_list(self,x):
+        parent_set = [list() for i in range(self.Bay.num_variable)]
+        count_u = 0
+        for i in range(self.Bay.num_variable):
+            tcount = 0
+            s1 = set()
+        
+            for j in range(self.Bay.count_len_of_u[i]):
+                if x[count_u] == 1:
+                    
+                    s1 =s1 | {i for i in self.Bay.u_set_list[i][j]}
+                    tcount +=1
+                count_u +=1
+            s1 = s1 - {i}
+        
+            if tcount >2:
+                print('error in x',i)
+            parent_set[i] = list(np.sort([k for k in s1]))
+        return parent_set
+    
+    def preli_qubo(self):
+        for i in range(len(self.chosen_list)):
+            ban = self.chosen_list[i]
+
+        return 
+    
+
+    def depthsf(self):
+        qubo = self.preli_qubo()
+        qubo_result =self.qubo_result(qubo)
+        parent_set = self.make_parent_set_list(qubo_result)
+        qubo_result_np = np.array(qubo_result)
+        pre_score = np.dot(np.dot((qubo_result_np),qubo), (qubo_result_np.T))
+        min_cycle = list()
+        min_cycle_num = len(parent_set) +1
+        if pre_score >= self.uppor_bound:
+            i = 1 ##iroiroyaru
+        else:
+            if judge_dag(parent_set):
+                i = 1 ##iroiroyaru
+            else:
+                pre_graph = preli_graph(len(parent_set),parent_set)
+                woods = pre_graph.scc_tree
+                for tree in woods:
+                    if min_cycle_num > len(tree):
+                        min_cycle = tree
+                
+                #iroiroyaru
+
+
+                
+
+
+
+        return
+
+

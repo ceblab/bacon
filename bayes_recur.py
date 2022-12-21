@@ -44,7 +44,7 @@ class Bayes:
         self.variable_list = reader.get_variables()
         self.num_variable = len(self.variable_list)
         self.status_list = reader.get_states()
-        self.data_set =BayesianModelSampling(reader.get_model()).forward_sample(size=int(1e4))
+        self.data_set =BayesianModelSampling(reader.get_model()).forward_sample(size=int(1e5))
         self.bdeu_a = bdeu_arufa
         self.max_parent_set = num_parent 
         self.u_set_list = [list() for i in range(self.num_variable)]
@@ -750,7 +750,7 @@ def eval_bay(bayes,re_list):
     print('ここのスコアは高いほうがよい')
     return
 max_parent = 3
-bayes = Bayes('asia.bif',max_parent,1)
+bayes = Bayes('cancer.bif',max_parent,1)
 
 
 
@@ -829,6 +829,11 @@ class Branch_and_Bound:
     weight = 1000
     preli_kai = []
     kaikikae = [] #kaikikaeta list
+    seen_set_horizon = set()
+    seen_set_horizon_no_steps = set()#miowatta
+    run_set = set()#imamiteru
+    Judge = True
+    qubo_size = 0
     def __init__(self,bayes,Qubo):
         self.QUBO = Qubo
         self.Bay = bayes
@@ -841,7 +846,11 @@ class Branch_and_Bound:
         for i in range(bayes.num_variable):
             self.count_sum_len_of_u[i] = sum
             sum += bayes.count_len_of_u[i]
-        print('sum len of u',self.count_sum_len_of_u)
+        self.qubo_size = bayes.qubo_size
+        print(self.count_sum_len_of_u)
+        print('qubo_size',self.qubo_size)
+
+
         
 
     def qubo_result(self,Qubo):
@@ -874,61 +883,132 @@ class Branch_and_Bound:
         return parent_set
     
     def next_qubo(self):
+        print('step',self.steps)
+        print('seen',self.seen_set_horizon)
+        print('seen_no',self.seen_set_horizon_no_steps)
+        print('branch',self.chosen_list[self.steps])
+        print('root',self.chosen_list[self.steps])
+        print('chosen',self.chosen_list)
         cont = True
         if len(self.branch_list[self.steps]) > self.chosen_list[self.steps] +1:
-            self.chosen_list[self.steps] = self.chosen_list[self.steps] +1
+            self.chosen_list[self.steps] += 1
             a,b,value = self.kaikikae.pop()
             self.QUBO[a][b] = value
+            #
+            
+            #
             ban = self.branch_list[self.steps][self.chosen_list[self.steps]]
             ban_domain = self.count_sum_len_of_u[ban]
             kai_ban = self.kai_list[self.steps]
             kai_1 = [j for j ,x in enumerate(kai_ban) if x == 1 and ban_domain <= j < ban_domain + self.Bay.count_len_of_u[ban]]
             kai_1 = np.array(kai_1)
             kai_1 = np.sort(kai_1)
+            #
+
             if len(kai_1) >2:
                 print('error occur')
             
             self.kaikikae.append((kai_1[0],kai_1[1],self.QUBO[kai_1[0]][kai_1[1]]))
             self.QUBO[kai_1[0]][kai_1[1]] += self.weight + self.Bay.max_w_list[ban] - self.Bay.score_disc_list[ban][(ban,)]
+            #
+            if ((kai_1[0],kai_1[1]) in self.seen_set_horizon_no_steps):
+                print('omit')
+                self.next_qubo()
+            #
+            #
         else:
-            if self.steps == -1:
+            if self.steps == 0 and len(self.branch_list[self.steps]) == self.chosen_list[self.steps] +1:
                 cont = False
             else:
-
+                
                 a,b,value = self.kaikikae.pop()
                 self.QUBO[a][b] = value
                 self.chosen_list.pop()
                 self.branch_list.pop()
                 self.kai_list.pop()
+                #
+                c,d,e = self.kaikikae[-1]
+                self.QUBO[c][d] = e
+                self.seen_set_horizon = {(y,z,w) for (y,z,w) in self.seen_set_horizon if y < self.steps}
+                self.seen_set_horizon_no_steps = {(z,w) for (y,z,w) in self.seen_set_horizon if y < self.steps}
+
+                self.seen_set_horizon.add((self.steps -1,c,d))
+                self.seen_set_horizon_no_steps.add((c,d))
+                #
+                print('seen',self.seen_set_horizon)
+                print('seen_no',self.seen_set_horizon_no_steps)
+                
                 self.steps = self.steps -1
                 self.next_qubo()
-
+                
         
 
 
         return cont
+    def dag_search(self,parents):
+        leng = len(parents)
+        topological = []
+        void_q = []
+        self.Judge = True
+        for u in range(leng):
+            for i in range(leng):
+                if len(parents[i] )== 0:
+                    void_q.append(i)
+                    parents[i].append(-1)
+            if len(void_q) == 0:
+                
+                self.Judge = False
+                break
+            x = void_q.pop(0)
+            topological.append(x)
+            for v in range(leng):
+                if x in parents[v]:
+                    parents[v].remove(x)
+        
     
+        return         
 
     def depthsf(self):
         print('step',self.steps)
+        print('seen',self.seen_set_horizon)
+        print('seen_no',self.seen_set_horizon_no_steps)
+        if(self.steps >-1):
+            print('branch',self.chosen_list[self.steps])
+            print('root',self.chosen_list[0])
+            print('chosen',self.chosen_list)
         qubo_result =self.qubo_result(self.QUBO)
         parent_set = self.make_parent_set_list(qubo_result)
+        #
+        print('kai_parent',self.kai_parent_set)
+        #
         qubo_result_np = np.array(qubo_result)
+        
         pre_score = np.dot(np.dot((qubo_result_np),self.QUBO), (qubo_result_np.T))
+        
+        print('pre_score',pre_score)
         min_cycle = []
         min_cycle_num = len(parent_set) +1
+        self.dag_search(parent_set)
+        parent_set = self.make_parent_set_list(qubo_result)
+        print('parent_set',parent_set)
+        print('judge_dag',self.Judge)
         if pre_score >= self.uppor_bound:
             if self.next_qubo():
                 self.depthsf()
-
         else:
-            if judge_dag(parent_set):
+            if self.Judge:
+                print('judgeee')
+                print('parent',parent_set)
                 self.uppor_bound = pre_score
                 self.preli_kai = qubo_result
                 self.kai_parent_set = parent_set
-                if self.next_qubo():
+                
+                if self.steps >= 0 and self.next_qubo():
                     self.depthsf()
+                
             else:
+                print('notttjudge')
+                print('parent_set',parent_set)
                 self.steps = self.steps + 1
                 pre_graph = preli_graph(len(parent_set),parent_set)
                 woods = pre_graph.scc_tree

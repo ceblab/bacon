@@ -44,7 +44,7 @@ class Bayes:
         self.variable_list = reader.get_variables()
         self.num_variable = len(self.variable_list)
         self.status_list = reader.get_states()
-        self.data_set =BayesianModelSampling(reader.get_model()).forward_sample(size=int(1e4))
+        self.data_set =BayesianModelSampling(reader.get_model()).forward_sample(size=int(1e5))
         self.bdeu_a = bdeu_arufa
         self.max_parent_set = num_parent 
         self.u_set_list = [list() for i in range(self.num_variable)]
@@ -609,7 +609,7 @@ def eval_bay(bayes,re_list):
     print('ここのスコアは高いほうがよい')
     return
 max_parent = 3
-bayes = Bayes('alarm.bif',max_parent,1)
+bayes = Bayes('cancer.bif',max_parent,1)
 
 
 

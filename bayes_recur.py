@@ -376,7 +376,7 @@ def calc_s_of_i(U_set,W_set,disc_of_i,child_vari):
                     s_disc[(child_vari,i,j)] = 0
             else:
                 if(pair_ij in W_set and W_set_check_list[pair_ij]==0):
-                    W_set_check_list[pair_ij] == 1
+                    W_set_check_list[pair_ij] = 1
                     if(U_set[i] in W_set):
                         if(U_set[j] in W_set):
                             s_disc[(child_vari,i,j)] = - (disc_of_i[pair_ij]) + (disc_of_i[U_set[i]]) +(disc_of_i[U_set[j]]) -empty_score
@@ -400,7 +400,7 @@ def calc_s_of_i(U_set,W_set,disc_of_i,child_vari):
                             s_disc[(child_vari,i,j)] = 0 + weight
 
 
-                            
+    print('wcheck',W_set_check_list)
     return s_disc
 '''
 def calc_s_of_i(U_set,W_set,disc_of_i,child_vari):
@@ -761,8 +761,8 @@ def eval_bay(bayes,re_list):
     print('割合',calc_bdeu/max_bdeu)
     print('ここのスコアは高いほうがよい')
     return
-max_parent = 3
-bayes = Bayes('sachs.bif',max_parent,1)
+max_parent = 2
+bayes = Bayes('asia.bif',max_parent,1)
 
 
 

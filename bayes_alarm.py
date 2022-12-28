@@ -609,7 +609,7 @@ def eval_bay(bayes,re_list):
     print('ここのスコアは高いほうがよい')
     return
 max_parent = 3
-bayes = Bayes('survey.bif',max_parent,1)
+bayes = Bayes('sachs.bif',max_parent,1)
 
 
 

@@ -978,7 +978,7 @@ class Branch_and_Bound:
                 self.steps = self.steps -1
                 self.next_qubo()
                 
-        
+        print('cont',cont)
 
 
         return cont
@@ -1042,6 +1042,7 @@ class Branch_and_Bound:
         print('judge_dag',self.Judge)
         if pre_score >= self.uppor_bound:
             if self.next_qubo():
+                print('prescore>= ')
                 self.depthsf()
         else:
             if self.Judge:
@@ -1052,7 +1053,7 @@ class Branch_and_Bound:
                 self.kai_parent_set = parent_set
                 
                 if self.next_qubo() and self.steps >= 0 :
-                    
+                    print('self judge')
                     self.depthsf()
                 
             else:
@@ -1072,6 +1073,7 @@ class Branch_and_Bound:
                 m = 0
                 
                 loop = True
+                conti = True
                 while loop:
 
                     b = blist[m]
@@ -1082,21 +1084,30 @@ class Branch_and_Bound:
 
                             print('omit in depth')
                             self.steps = self.steps -1
-                            if self.next_qubo():
-                                self.depthsf()
+                            self.next_qubo()
+                            if self.steps == 0 and len(self.branch_list[self.steps]) == self.chosen_list[self.steps] +1:
+                            
+                                print('終わり')
+                                conti = False
+                                m = m -1
+                                loop = False
                             else:
-                                return
+                                self.depthsf()
+                                loop = False
+                                conti = False
 
                     else:
                         loop = False
                 #
-                ban_domain = self.count_sum_len_of_u[ban]
-                self.kai_list.append(qubo_result)
-                kai_ban = qubo_result
-                kai_1 = [j for j ,x in enumerate(kai_ban) if x == 1 and ban_domain <= j < ban_domain + self.Bay.count_len_of_u[ban]]
-                kai_1 = np.array(kai_1)
-                kai_1 = np.sort(kai_1)
-                u = self.Bay.u_set_list[ban]
+                if conti:
+
+                    ban_domain = self.count_sum_len_of_u[ban]
+                    self.kai_list.append(qubo_result)
+                    kai_ban = qubo_result
+                    kai_1 = [j for j ,x in enumerate(kai_ban) if x == 1 and ban_domain <= j < ban_domain + self.Bay.count_len_of_u[ban]]
+                    kai_1 = np.array(kai_1)
+                    kai_1 = np.sort(kai_1)
+                    u = self.Bay.u_set_list[ban]
                 #set1 = {k for k in u[kai_1[0]- self.count_sum_len_of_u[ban]]}
                 #set2 = {k for k in u[kai_1[1] - self.count_sum_len_of_u[ban]]}
                 #set12 = (set1 | set2) - {ban}
@@ -1104,9 +1115,9 @@ class Branch_and_Bound:
                 
                 #self.branch_list.append(ban_par)
                 #debug
-                ban_par = blist
-                self.branch_list.append(ban_par)
-                self.chosen_list.append(m)
+                    ban_par = blist
+                    self.branch_list.append(ban_par)
+                    self.chosen_list.append(m)
                 #ban = min_cycle[0]
                 #ban_domain = self.count_sum_len_of_u[ban]
                 
@@ -1117,28 +1128,29 @@ class Branch_and_Bound:
                 #kai_1 = np.sort(kai_1)
             
                 
-                if len(kai_1) >2:
-                    print('error occur')
+                    if len(kai_1) >2:
+                        print('error occur')
                 
 
 
-                self.kakikae.append((ban_par[m],ban))
-                print('ban, banpar',((ban_par[m],ban)))
+                    self.kakikae.append((ban_par[m],ban))
+                    print('ban, banpar',((ban_par[m],ban)))
                 
                 #print(self.QUBO[0][0])
                 #print(self.QUBO[kai_1[0]][kai_1[0]])
                 #print(self.QUBO[kai_1[1]][kai_1[1]])
-                for u in self.Bay.i_jdic[(ban_par[m],ban)]:
+                    for u in self.Bay.i_jdic[(ban_par[m],ban)]:
                     #print('kakikae')
-                    a,b = u
-                    offset = self.count_sum_len_of_u[ban_par[m]]
-                    self.QUBO[offset + a,offset + b]  += self.weight + self.Bay.max_w_list[ban_par[m]] - self.Bay.score_disc_list[ban_par[m]][(ban_par[m],)]
+                        a,b = u
+                        offset = self.count_sum_len_of_u[ban_par[m]]
+                        self.QUBO[offset + a,offset + b]  += self.weight + self.Bay.max_w_list[ban_par[m]] - self.Bay.score_disc_list[ban_par[m]][(ban_par[m],)]
 
 
                 #print('henka',self.Bay.i_jdic[(ban_par[0],ban)])
                 #print('qubo,qubo_origin',(self.QUBO == self.QUBO_origin).all())
-                print('branch root',self.branch_list[0])
-                self.depthsf()
+                    print('branch root',self.branch_list[0])
+                
+                    self.depthsf()
 
 
         return

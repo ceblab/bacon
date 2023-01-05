@@ -5,6 +5,8 @@ class preli_graph:
     child_set_list = list()
     parent_set_list = list()
     scc_tree = []
+    cycle_list = []
+
     time=0
     num_node = 0
     def __init__(self,num_nodes,parent_list):
@@ -57,6 +59,39 @@ class preli_graph:
         self.node_time_stamp[node] = self.time
         
         return
+    def search_cycle(self,min_cycle,parent):
+        self.cycle_list.clear()
+        
+        self.stlist = [0 for i in range(self.num_node)]
+        for i in range(len(self.stlist)):
+            if i in min_cycle:
+                self.stlist[i] = 0
+            else:
+                self.stlist[i] = -1
+
+        start = min_cycle[0]
+        self.cycle_list = [start]
+        self.df_search(start,parent,start)
+        return self.cycle_list
+    def df_search(self,vari,parent,start):
+        print(self.cycle_list)
+        self.stlist[vari] = 1
+        con = True
+        for i in parent[vari]:
+            print(i)
+            if i == start:
+                print(self.cycle_list,'false')
+                con = False
+                break
+
+            if self.stlist[i] == 0 and con:
+                self.cycle_list.append(i)
+                con = con and self.df_search(i,parent,start)
+        if con:
+            a = self.cycle_list.pop()
+            print('pop',vari,a)
+
+        return con
 
 def dag_search(parents):
         
@@ -81,8 +116,12 @@ def dag_search(parents):
         
     
         return   Judge
+
+
 list1 =[[], [2], [], [4, 6], [2], [0, 1, 3], [5], [4, 5]] 
-a = preli_graph(len(list1),list1)
+list2 = [[], [3, 5], [], [2, 5], [2], [2, 6, 7], [0, 1, 3], [3, 4]]#[[1],[2,3],[4],[0],[1]]
+
+a = preli_graph(len(list2),list2)
 print(a.scc_tree)
-print(dag_search(list1))
-    
+print(dag_search(list2))
+print(a.search_cycle([1,3,5,6,7],list2))

@@ -361,6 +361,8 @@ def calc_s_of_i(U_set,W_set,disc_of_i,child_vari,ij_dict):
     
     empty_score = (disc_of_i[(child_vari,)])
     for i in range(l):
+        for u in U_set[i]:
+            ij_dict[(child_vari,u)].append((i,i))
         for j in range(i,l):
             if i ==0 and j == 0:
                 pair_ij = (child_vari,)
@@ -377,15 +379,15 @@ def calc_s_of_i(U_set,W_set,disc_of_i,child_vari,ij_dict):
                 if(pair_ij in W_set):
                     s_disc[(child_vari,i,j)] = -(disc_of_i[pair_ij]) + empty_score
                     W_set_check_list[pair_ij] = 1
-                    for u in pair_ij:
-                        ij_dict[(child_vari,u)].append((0,i))
+                    #for u in pair_ij:
+                    #    ij_dict[(child_vari,u)].append((0,i))
                 else:
                     s_disc[(child_vari,i,j)] = 0
             else:
                 if(pair_ij in W_set and W_set_check_list[pair_ij]==0):
                     W_set_check_list[pair_ij] = 1
-                    for u in pair_ij:
-                        ij_dict[(child_vari,u)].append((i,j))
+                    #for u in pair_ij:
+                    #    ij_dict[(child_vari,u)].append((i,j))
                     if(U_set[i] in W_set):
                         if(U_set[j] in W_set):
                             s_disc[(child_vari,i,j)] = - (disc_of_i[pair_ij]) + (disc_of_i[U_set[i]]) +(disc_of_i[U_set[j]]) -empty_score
@@ -772,7 +774,7 @@ def eval_bay(bayes,re_list):
     print('ここのスコアは高いほうがよい')
     return
 max_parent = 3
-bayes = Bayes('sachs.bif',max_parent,1)
+bayes = Bayes('asia.bif',max_parent,1)
 
 
 
@@ -848,7 +850,7 @@ class Branch_and_Bound:
     branch_list = []#erabu list no list
     kai_list = [] #kai no list
     kai_parent_set = []
-    weight = 1000
+    weight = 1000000
     preli_kai = []
     kakikae = [] #kaikikaeta list
     seen_set_horizon = set()
@@ -856,6 +858,7 @@ class Branch_and_Bound:
     run_set = set()#imamiteru
     Judge = True
     qubo_size = 0
+    cycle_list = []
     def __init__(self,bayes,Qubo):
         self.QUBO = Qubo
         self.QUBO_origin =np.copy(Qubo)
@@ -872,7 +875,7 @@ class Branch_and_Bound:
         self.qubo_size = bayes.qubo_size
         print(self.count_sum_len_of_u)
         print('qubo_size',self.qubo_size)
-        
+        self.stlist = [0 for i in range(bayes.num_variable)]
         #debug
         #for i in range(bayes.count_len_of_u[i]):
         #    for j in range(bayes.count_len_of_u[i]):
@@ -881,7 +884,7 @@ class Branch_and_Bound:
         #        elif i <= j:
         #            self.QUBO[i][j] = self.weight + self.Bay.max_w_list[0] - self.Bay.score_disc_list[0][(0,)]
 
-        
+    
 
     def qubo_result(self,Qubo):
         qubo_amp = BinaryMatrix(Qubo)
@@ -931,17 +934,26 @@ class Branch_and_Bound:
                     self.QUBO[offset + c,offset + d]  = self.QUBO_origin[offset + c,offset + d] 
             #
             print('水平')
+            kaki_a = [(g,h) for g,h in self.kakikae if g == a]
+            for s in kaki_a:
+                for u in self.Bay.i_jdic[s]:
+                    a,b = s
+                    c,d = u
+                    offset = self.count_sum_len_of_u[a]
+                    self.QUBO[offset + c,offset + d]  = self.weight
             #
-            j = self.branch_list[self.steps][self.chosen_list[self.steps]]
-            for u in self.Bay.i_jdic[(j,b)]:
+            b_n = self.branch_list[self.steps][self.chosen_list[self.steps]]
+            self.check_ban(b_n)#debug
+            for u in self.Bay.i_jdic[b_n]:
+                j,k = b_n
                 c,d = u
                 offset = self.count_sum_len_of_u[j]
                 self.QUBO[offset + c,offset + d]   += self.weight + self.Bay.max_w_list[j] - self.Bay.score_disc_list[j][(j,)]
             #
 
             
-            self.kakikae.append((j,b))
-            if ((j,b) in self.seen_set_horizon_no_steps):
+            self.kakikae.append(b_n)
+            if (b_n in self.seen_set_horizon_no_steps):
                 print('omit')
                 self.next_qubo()
             #
@@ -958,7 +970,7 @@ class Branch_and_Bound:
                     self.QUBO[offset + c,offset + d]  = self.QUBO_origin[offset + c,offset + d] 
                 self.chosen_list.pop()
                 self.branch_list.pop()
-                self.kai_list.pop()
+                #self.kai_list.pop()
                 #
                 e,f= self.kakikae[-1]
                 for u in self.Bay.i_jdic[(e,f)]:
@@ -1013,7 +1025,36 @@ class Branch_and_Bound:
         
         return child_set
             
+    def search_cycle(self,min_cycle,parent):
+        self.cycle_list.clear()
+        #u =np.random.randint(0,len(min_cycle))
+        self.stlist = [0 for i in range(bayes.num_variable)]
+        for i in range(len(self.stlist)):
+            if i in min_cycle:
+                self.stlist[i] = 0
+            else:
+                self.stlist[i] = -1
 
+        start = min_cycle[0]
+        self.cycle_list = [start]
+        self.df_search(start,parent,start)
+        return self.cycle_list
+    def df_search(self,vari,parent,start):
+        self.stlist[vari] = 1
+        con = True
+        for i in parent[vari]:
+            if i == start:
+                con = False
+                break
+
+            if self.stlist[i] == 0 and con:
+                self.cycle_list.append(i)
+                con = con and self.df_search(i,parent,start)
+        if con:
+            a = self.cycle_list.pop()
+            print('pop',vari,a)
+
+        return con
     def depthsf(self):
         print('depthsf')
         print('step',self.steps)
@@ -1030,7 +1071,7 @@ class Branch_and_Bound:
         print('kai_parent',self.kai_parent_set)
         #
         qubo_result_np = np.array(qubo_result)
-        
+        print('qubo_result',qubo_result_np)
         pre_score = np.dot(np.dot((qubo_result_np),self.QUBO), (qubo_result_np.T))
         
         print('pre_score',pre_score)
@@ -1041,6 +1082,10 @@ class Branch_and_Bound:
         print('parent_set',parent_set)
         print('judge_dag',self.Judge)
         if pre_score >= self.uppor_bound:
+            if len(self.kakikae) > 0:
+                e,f= self.kakikae[-1]
+                self.seen_set_horizon.add((self.steps,e,f))
+                self.seen_set_horizon_no_steps.add((e,f))
             if self.next_qubo():
                 print('prescore>= ')
                 self.depthsf()
@@ -1051,8 +1096,11 @@ class Branch_and_Bound:
                 self.uppor_bound = pre_score
                 self.preli_kai = qubo_result
                 self.kai_parent_set = parent_set
-                
-                if self.next_qubo() and self.steps >= 0 :
+                if len(self.kakikae) > 0:
+                    e,f= self.kakikae[-1]
+                    self.seen_set_horizon.add((self.steps,e,f))
+                    self.seen_set_horizon_no_steps.add((e,f))
+                if self.steps >= 0 and self.next_qubo() :
                     print('self judge')
                     self.depthsf()
                 
@@ -1068,8 +1116,25 @@ class Branch_and_Bound:
                 #
                 print('wood',woods)
                 #
-                blist = self.i_child(min_cycle[0],parent_set,min_cycle)
+
+                #blist = self.i_child(min_cycle[0],parent_set,min_cycle)
+                #ban_c = (self.i_child(min_cycle[0],parent_set,min_cycle))[0]
+
                 ban = min_cycle[0]
+                #ban_p = 0
+
+                #for i in parent_set[ban]:
+                #    if i in min_cycle:
+                #        ban_p = i
+                cycle_l = self.search_cycle(min_cycle,parent_set)
+                blist = []
+                for i in range(len(cycle_l)):
+                    v = (i +1) % len(cycle_l)
+                    blist.append((cycle_l[i],cycle_l[v]))
+                #blist = #[(ban_c,ban),(ban,ban_p),(ban_p,ban_c)]#(chi,pa)
+
+                
+
                 m = 0
                 
                 loop = True
@@ -1078,7 +1143,7 @@ class Branch_and_Bound:
 
                     b = blist[m]
                     
-                    if ((b,ban) in self.seen_set_horizon_no_steps):
+                    if (b in self.seen_set_horizon_no_steps):
                         m += 1
                         if m == len(blist):
 
@@ -1101,13 +1166,13 @@ class Branch_and_Bound:
                 #
                 if conti:
 
-                    ban_domain = self.count_sum_len_of_u[ban]
-                    self.kai_list.append(qubo_result)
-                    kai_ban = qubo_result
-                    kai_1 = [j for j ,x in enumerate(kai_ban) if x == 1 and ban_domain <= j < ban_domain + self.Bay.count_len_of_u[ban]]
-                    kai_1 = np.array(kai_1)
-                    kai_1 = np.sort(kai_1)
-                    u = self.Bay.u_set_list[ban]
+                    #ban_domain = self.count_sum_len_of_u[ban]
+                    #self.kai_list.append(qubo_result)
+                    #kai_ban = qubo_result
+                    #kai_1 = [j for j ,x in enumerate(kai_ban) if x == 1 and ban_domain <= j < ban_domain + self.Bay.count_len_of_u[ban]]
+                    #kai_1 = np.array(kai_1)
+                    #kai_1 = np.sort(kai_1)
+                    #u = self.Bay.u_set_list[ban]
                 #set1 = {k for k in u[kai_1[0]- self.count_sum_len_of_u[ban]]}
                 #set2 = {k for k in u[kai_1[1] - self.count_sum_len_of_u[ban]]}
                 #set12 = (set1 | set2) - {ban}
@@ -1115,36 +1180,41 @@ class Branch_and_Bound:
                 
                 #self.branch_list.append(ban_par)
                 #debug
-                    ban_par = blist
-                    self.branch_list.append(ban_par)
+                    #ban_par = blist
+                    self.branch_list.append(blist)
                     self.chosen_list.append(m)
                 #ban = min_cycle[0]
                 #ban_domain = self.count_sum_len_of_u[ban]
-                
+                    g,h = blist[m]
+                    ban_domain = self.count_sum_len_of_u[g]
                 
                 #kai_ban = self.kai_list[self.steps]
-                #kai_1 = [j for j ,x in enumerate(kai_ban) if x == 1 and ban_domain <= j < ban_domain + self.Bay.count_len_of_u[ban]]
+                    kai_1 = [j for j ,x in enumerate(qubo_result) if x == 1 and ban_domain <= j < ban_domain + self.Bay.count_len_of_u[ban]]
                 #kai_1 = np.array(kai_1)
                 #kai_1 = np.sort(kai_1)
             
                 
-                    if len(kai_1) >2:
-                        print('error occur')
+                    #if len(kai_1) >2:
+                    #    print('error occur')
+                    print('kai_1',kai_1)
                 
 
 
-                    self.kakikae.append((ban_par[m],ban))
-                    print('ban, banpar',((ban_par[m],ban)))
-                
+                    self.kakikae.append(blist[m])
+                    print('ban, banpar',blist,'bm',blist[m])
+                    print('seen',self.seen_set_horizon)
+                    print('seen_no',self.seen_set_horizon_no_steps)
                 #print(self.QUBO[0][0])
                 #print(self.QUBO[kai_1[0]][kai_1[0]])
                 #print(self.QUBO[kai_1[1]][kai_1[1]])
-                    for u in self.Bay.i_jdic[(ban_par[m],ban)]:
+                    self.check_ban(blist[m])#debug
+                    for u in self.Bay.i_jdic[blist[m]]:
                     #print('kakikae')
                         a,b = u
-                        offset = self.count_sum_len_of_u[ban_par[m]]
-                        self.QUBO[offset + a,offset + b]  += self.weight + self.Bay.max_w_list[ban_par[m]] - self.Bay.score_disc_list[ban_par[m]][(ban_par[m],)]
-
+                        parent,child = blist[m]
+                        offset = self.count_sum_len_of_u[parent]
+                        self.QUBO[offset + a][offset + b]  =self.weight#+= self.weight + self.Bay.max_w_list[parent] - self.Bay.score_disc_list[parent][(parent,)]
+                        print((offset+a,offset+b))
 
                 #print('henka',self.Bay.i_jdic[(ban_par[0],ban)])
                 #print('qubo,qubo_origin',(self.QUBO == self.QUBO_origin).all())
@@ -1154,7 +1224,48 @@ class Branch_and_Bound:
 
 
         return
+    def check_ban(self,ban):
+        l = [self.branch_list[i][self.chosen_list[i]] for i in range(len(self.chosen_list))]
+        if len(l) != len(set(l)):
+            print('error occur')
+            print(l)
+            print(self.count_sum_len_of_u)
+            g,h = ban
+            print('ij', self.Bay.i_jdic[ban])
+            for u in self.Bay.i_jdic[ban]:
+                v,w = u
+                print((self.count_sum_len_of_u[g]+v,self.count_sum_len_of_u[g]+w))
+            np.savetxt('qubo_error.csv',QUBO,delimiter=',' ,fmt="%.i")
+            time.sleep(10)
+        return
+#    def qubo_solve(self):
+#        for i in range(len(self.count_sum_len_of_u)):
+#            for l in range(len(self.count_sum_len_of_u)):
+#                print('qubo solve',i,l)
+#                offset = self.count_sum_len_of_u[i]
+#                for j in range(self.count_sum_len_of_u[i]):
+#                    for k in range(j+1,self.count_sum_len_of_u[i]):
+#                        self.QUBO[offset+j,offset+k] += self.weight + self.Bay.max_w_list[i] - self.Bay.score_disc_list[i][(i,)]
+#                for u in range(len(self.count_sum_len_of_u)):
+#                    for q in self.Bay.i_jdic[(u,l)]:
+#                        a,b = q
+#                        offset = self.count_sum_len_of_u[u]
+#                        self.QUBO[offset+a,offset+b] += self.weight + self.Bay.max_w_list[u] - self.Bay.score_disc_list[u][(u,)]
+#                self.depthsf()
+##               self.QUBO = self.QUBO_origin
+#
+#
+#
+#        return
 
+    #def qubo_solve(self):
+        #for i in range(len(self.count_sum_len_of_u)):
+        # self.QUBO = self.QUBO[self.count_sum_len_of_u[1]:,self.count_sum_len_of_u[1]:]
+         #self.count_sum_len_of_u
+
+            
+        return
+print('ij',bayes.i_jdic)
 time_sta = time.time()
 bab = Branch_and_Bound(bayes,QUBO)
 bab.depthsf()

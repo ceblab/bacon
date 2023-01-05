@@ -32,7 +32,7 @@ import time
 print(sys.getrecursionlimit())
 
 sys.setrecursionlimit(67108864) #64MB
-threading.stack_size(1024*1024)  #2の20乗のstackを確保=メモリの確保
+threading.stack_size(2048*2048)  #2の20乗のstackを確保=メモリの確保
 
 #変更後の再帰関数の実行回数の上限を表示
 print(sys.getrecursionlimit())
@@ -543,12 +543,12 @@ def making_QUBO(bayes):
                 print(v)
                 #print((b+count_u,c + count_u),v,u_list[i][b],u_list[i][c])
             elif b == c:
-                qubo[b+count_u][c + count_u] += v + xi[i]
+                qubo[b+count_u][c + count_u] += v #+ xi[i]
             else:
-                qubo[b+count_u][c + count_u] += v + 2*xi[i]
+                qubo[b+count_u][c + count_u] += v + xi[i]
                 #print((b+count_u,c + count_u),v,u_list[i][b],u_list[i][c])
-            if b == 0 and c>0:
-                qubo[b+count_u][c + count_u] += xi[i]
+            #if b == 0 and c>0:
+            #    qubo[b+count_u][c + count_u] +=xi[i]
 
         count_c[i] = count_u
         count_u = count_u + len_of_u[i]
@@ -556,10 +556,10 @@ def making_QUBO(bayes):
     #print(qubo)
     for i in range(num_vari):
         print(i,'calc B')
-        qubo[count_u][count_u] += 4*xi[i]
+        qubo[count_u][count_u] += xi[i]#4*xi[i]
         #print(count_u)
         for j in range(len_of_u[i]):
-            qubo[j + count_b][count_u] += - 4*xi[i]#qubo[j + count_b][count_u] += - xi[i]
+            qubo[j + count_b][count_u] += - xi[i]#- 4*xi[i]
             #print((count_u,j + count_b))
       
         count_b = count_b + len_of_u[i]
@@ -773,7 +773,7 @@ def eval_bay(bayes,re_list):
     print('割合',calc_bdeu/max_bdeu)
     print('ここのスコアは高いほうがよい')
     return
-max_parent = 3
+max_parent = 2
 bayes = Bayes('asia.bif',max_parent,1)
 
 
@@ -865,7 +865,7 @@ class Branch_and_Bound:
         self.Bay = bayes
         client = FixstarsClient()
         client.token = "bGezdYx88VisgcbxBgmpP7i0ferFQiZG"
-        client.parameters.timeout = 100  # タイムアウト1秒
+        client.parameters.timeout = 10  # タイムアウト1秒
         self.solver = Solver(client)
         self.count_sum_len_of_u = [0 for i in range(bayes.num_variable)]
         sum = 0
@@ -911,7 +911,8 @@ class Branch_and_Bound:
             s1 = s1 - {i}
         
             if tcount >2:
-                print('error in x',i)
+                print('error in x in make parent set_list',i)
+                time.sleep(10)
             parent_set[i] = (np.sort([k for k in s1])).tolist()
         return parent_set
     
@@ -968,6 +969,16 @@ class Branch_and_Bound:
                     c,d = u
                     offset = self.count_sum_len_of_u[a]
                     self.QUBO[offset + c,offset + d]  = self.QUBO_origin[offset + c,offset + d] 
+                
+                #
+                kaki_a = [(g,h) for g,h in self.kakikae if g == a]
+                for s in kaki_a:
+                    for u in self.Bay.i_jdic[s]:
+                        a,b = s
+                        c,d = u
+                        offset = self.count_sum_len_of_u[a]
+                        self.QUBO[offset + c,offset + d]  = self.weight
+                #
                 self.chosen_list.pop()
                 self.branch_list.pop()
                 #self.kai_list.pop()
@@ -977,6 +988,14 @@ class Branch_and_Bound:
                     c,d = u
                     offset = self.count_sum_len_of_u[e]
                     self.QUBO[offset + c,offset + d]  = self.QUBO_origin[offset + c,offset + d] 
+                #
+                kaki_b = [(g,h) for g,h in self.kakikae if g == e]
+                for s in kaki_b:
+                    for u in self.Bay.i_jdic[s]:
+                        a,b = s
+                        c,d = u
+                        offset = self.count_sum_len_of_u[a]
+                        self.QUBO[offset + c,offset + d]  = self.weight
                 #
                 self.seen_set_horizon = {(y,z,w) for (y,z,w) in self.seen_set_horizon if y < self.steps}
                 self.seen_set_horizon_no_steps = {(z,w) for (y,z,w) in self.seen_set_horizon if y < self.steps}
@@ -1108,6 +1127,7 @@ class Branch_and_Bound:
                 print('notttjudge')
                 print('parent_set',parent_set)
                 self.steps = self.steps + 1
+                
                 pre_graph = preli_graph(len(parent_set),parent_set)
                 woods = pre_graph.scc_tree
                 for tree in woods:
@@ -1139,30 +1159,49 @@ class Branch_and_Bound:
                 
                 loop = True
                 conti = True
-                while loop:
-
-                    b = blist[m]
-                    
-                    if (b in self.seen_set_horizon_no_steps):
-                        m += 1
-                        if m == len(blist):
-
-                            print('omit in depth')
-                            self.steps = self.steps -1
-                            self.next_qubo()
-                            if self.steps == 0 and len(self.branch_list[self.steps]) == self.chosen_list[self.steps] +1:
-                            
-                                print('終わり')
-                                conti = False
-                                m = m -1
-                                loop = False
-                            else:
-                                self.depthsf()
-                                loop = False
-                                conti = False
-
+                blist_sin = []
+                for b in blist:
+                    if (b not in self.seen_set_horizon_no_steps):
+                        blist_sin.append(b)
+                #
+                #if self.steps>18:
+                #    blist_sin = []
+                #
+                if len(blist_sin) == 0:
+                    print('omit in depth')
+                    self.steps += -1
+                    self.next_qubo()
+                    conti = False
+                    if self.steps == 0 and len(self.branch_list[self.steps]) == self.chosen_list[self.steps] +1:
+                        print('終わり')
                     else:
-                        loop = False
+                        self.depthsf()
+                blist = blist_sin
+
+#                while loop:
+#
+#                    b = blist[m]
+#                    
+#                    if (b in self.seen_set_horizon_no_steps):
+#                        m += 1
+##                        if m == len(blist):
+#
+#                            print('omit in depth')
+#                            self.steps = self.steps -1
+#                            self.next_qubo()
+#                            if self.steps == 0 and len(self.branch_list[self.steps]) == self.chosen_list[self.steps] +1:
+#                            
+#                                print('終わり')
+#                                conti = False
+#                                m = m -1
+#                                loop = False
+#                            else:
+#                                self.depthsf()
+#                                loop = False
+#                                conti = False
+#
+#                    else:
+#                        loop = False
                 #
                 if conti:
 
@@ -1219,7 +1258,10 @@ class Branch_and_Bound:
                 #print('henka',self.Bay.i_jdic[(ban_par[0],ban)])
                 #print('qubo,qubo_origin',(self.QUBO == self.QUBO_origin).all())
                     print('branch root',self.branch_list[0])
-                
+                    #debug
+                    
+
+                    #
                     self.depthsf()
 
 
@@ -1227,7 +1269,7 @@ class Branch_and_Bound:
     def check_ban(self,ban):
         l = [self.branch_list[i][self.chosen_list[i]] for i in range(len(self.chosen_list))]
         if len(l) != len(set(l)):
-            print('error occur')
+            print('error occur in check_ban')
             print(l)
             print(self.count_sum_len_of_u)
             g,h = ban
@@ -1238,6 +1280,16 @@ class Branch_and_Bound:
             np.savetxt('qubo_error.csv',QUBO,delimiter=',' ,fmt="%.i")
             time.sleep(10)
         return
+    def qubo_solve(self):
+        for i in range(len(self.count_sum_len_of_u)):
+            if i == len(self.count_sum_len_of_u):
+                k =self.qubo_size
+            else:
+                k = self.count_sum_len_of_u[i+1]
+            for j in range(self.count_sum_len_of_u[i]+1,k):
+                self.QUBO[j,j] = self.weight
+            self.depthsf()
+            self.QUBO = self.QUBO_origin
 #    def qubo_solve(self):
 #        for i in range(len(self.count_sum_len_of_u)):
 #            for l in range(len(self.count_sum_len_of_u)):
@@ -1268,6 +1320,7 @@ class Branch_and_Bound:
 print('ij',bayes.i_jdic)
 time_sta = time.time()
 bab = Branch_and_Bound(bayes,QUBO)
+#bab.qubo_solve()
 bab.depthsf()
 time_end = time.time()
 proc_time = time_end- time_sta

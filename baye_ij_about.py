@@ -67,7 +67,7 @@ class Bayes:
         for i in range(self.num_variable):
             for j in range(self.num_variable):
                 self.i_jdic[(i,j)] = list()
-
+        
 
     def init_score_disc(self):
         self.score_disc_list = [dict() for i in range(self.num_variable)]
@@ -812,7 +812,11 @@ with open('qubo_rec.csv','w') as f:
     for i in range(bayes.qubo_size):
 
         writer.writerow(QUBO[i])
+with open('qubo_origin.csv','w') as f:
+    writer = csv.writer(f)
+    for i in range(bayes.qubo_size):
 
+        writer.writerow(QUBO[i])
 x = [0 for i in range(bayes.qubo_size)]
 
 #with open('minx.txt') as f:
@@ -860,7 +864,7 @@ class Branch_and_Bound:
     Judge = True
     qubo_size = 0
     cycle_list = []
-    def __init__(self,bayes,Qubo):
+    def __init__(self,bayes,Qubo,limit):
         self.QUBO = Qubo
         self.QUBO_origin =np.array(copy.deepcopy(Qubo))
         self.Bay = bayes
@@ -877,6 +881,7 @@ class Branch_and_Bound:
         print(self.count_sum_len_of_u)
         print('qubo_size',self.qubo_size)
         self.stlist = [0 for i in range(bayes.num_variable)]
+        self.step_limit = limit
         #debug
         #for i in range(bayes.count_len_of_u[i]):
         #    for j in range(bayes.count_len_of_u[i]):
@@ -957,7 +962,7 @@ class Branch_and_Bound:
             self.kakikae.append(b_n)
             if (b_n in self.seen_set_horizon_no_steps):
                 print('omit')
-                self.next_qubo()
+                cont = self.next_qubo()
             #
             #
         else:
@@ -1008,7 +1013,7 @@ class Branch_and_Bound:
                 print('seen_no',self.seen_set_horizon_no_steps)
                 
                 self.steps = self.steps -1
-                self.next_qubo()
+                cont = self.next_qubo()
                 
         print('cont',cont)
 
@@ -1165,7 +1170,7 @@ class Branch_and_Bound:
                     if (b not in self.seen_set_horizon_no_steps):
                         blist_sin.append(b)
                 #
-                if self.steps>9:
+                if self.steps>self.step_limit:
                     blist_sin = []
                 #
                 if len(blist_sin) == 0:
@@ -1291,6 +1296,42 @@ class Branch_and_Bound:
                 self.QUBO[j,j] = self.weight
             self.depthsf()
             self.QUBO = self.QUBO_origin
+    def qubo_solve_i_sol(self,q):
+        if q == len(self.count_sum_len_of_u) -1:
+            k = self.qubo_size
+        else: 
+            k = self.count_sum_len_of_u[(q+1)]
+        for u in range(self.count_sum_len_of_u[q]+1,k):
+            self.QUBO[u,u] = self.weight
+        self.depthsf()
+        self.QUBO = np.copy(self.QUBO_origin)
+        self.branch_list.clear()
+        self.chosen_list.clear()
+        self.seen_set_horizon.clear()
+        self.seen_set_horizon_no_steps.clear()
+        self.kakikae.clear()
+        self.steps = -1
+    def qubo_solve_i(self):
+        k = 0
+        for q in range(len(self.count_sum_len_of_u)):
+            if k != 0:
+                for u in range(self.count_sum_len_of_u[q-1]+1,k):
+                    self.QUBO[u,u] = self.QUBO_origin[u,u]
+            if q == len(self.count_sum_len_of_u) -1:
+                k = self.qubo_size
+            else: 
+                k = self.count_sum_len_of_u[(q+1)]
+            for u in range(self.count_sum_len_of_u[q]+1,k):
+                    self.QUBO[u,u] = self.weight
+            self.depthsf()
+            self.QUBO = np.copy(self.QUBO_origin)
+            self.branch_list.clear()
+            self.chosen_list.clear()
+            self.seen_set_horizon.clear()
+            self.seen_set_horizon_no_steps.clear()
+            self.kakikae.clear()
+            self.steps = -1
+
     def qubo_solve_ij(self):
         
         
@@ -1351,10 +1392,13 @@ class Branch_and_Bound:
         return
 print('ij',bayes.i_jdic)
 time_sta = time.time()
-bab = Branch_and_Bound(bayes,QUBO)
+bab = Branch_and_Bound(bayes,QUBO,8)
+for i in range(len(bayes.variable_list)):
+    bab.qubo_solve_i_sol(i)
 #bab.qubo_solve()
 #bab.depthsf()
-bab.qubo_solve_ij()
+#bab.qubo_solve_ij()
+#bab.qubo_solve_i()
 time_end = time.time()
 proc_time = time_end- time_sta
 print('解',bab.kai_parent_set)

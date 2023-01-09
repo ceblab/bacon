@@ -950,7 +950,7 @@ class Branch_and_Bound:
                     self.QUBO[offset + c,offset + d]  = self.weight
             #
             b_n = self.branch_list[self.steps][self.chosen_list[self.steps]]
-            self.check_ban(b_n)#debug
+            #self.check_ban(b_n)#debug
             for u in self.Bay.i_jdic[b_n]:
                 j,k = b_n
                 c,d = u
@@ -1252,7 +1252,7 @@ class Branch_and_Bound:
                 #print(self.QUBO[0][0])
                 #print(self.QUBO[kai_1[0]][kai_1[0]])
                 #print(self.QUBO[kai_1[1]][kai_1[1]])
-                    self.check_ban(blist[m])#debug
+                    #self.check_ban(blist[m])#debug
                     for u in self.Bay.i_jdic[blist[m]]:
                     #print('kakikae')
                         a,b = u

@@ -24,3 +24,7 @@ bronc の親変数は ['smoke'] です
 either の親変数は ['tub', 'lung'] です
 xray の親変数は ['either'] です
 dysp の親変数は ['bronc', 'either'] です
+
+client.parameters.timeout = 10 
+max_parent = 2
+bayes = Bayes('asia.bif',max_parent,1)

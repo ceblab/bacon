@@ -44,12 +44,13 @@ class Bayes:
         self.variable_list = reader.get_variables()
         self.num_variable = len(self.variable_list)
         self.status_list = reader.get_states()
-        self.data_set =BayesianModelSampling(reader.get_model()).forward_sample(size=int(1e4))
+        self.data_set =BayesianModelSampling(reader.get_model()).forward_sample(size=int(1e3))
         self.bdeu_a = bdeu_arufa
         self.max_parent_set = num_parent 
         self.u_set_list = [list() for i in range(self.num_variable)]
         self.init_score_disc()
         self.max_model = reader.get_model()
+        self.kani_qubo_size = 0
 
     def init_score_disc(self):
         self.score_disc_list = [dict() for i in range(self.num_variable)]
@@ -197,6 +198,32 @@ class Bayes:
 
 
 def make_W_set_of_i(disc_of_i,child_vari,num_variable,max_parent_set):
+    if max_parent==3:
+        wi = make_W_set_of_i_three(disc_of_i,child_vari,num_variable,max_parent_set)
+    elif max_parent ==2:
+        wi = make_W_set_of_i_two(disc_of_i,child_vari,num_variable,max_parent_set)
+    return wi
+
+def make_W_set_of_i_two(disc_of_i,child_vari,num_variable,max_parent_set):
+    W_set_of_i = list()
+    W_set_of_i.append((child_vari,))
+    score_of_empty_set = disc_of_i[(child_vari,)]
+    max_score_list = [score_of_empty_set for i in range(num_variable)]#score of parent set i
+    for i in range(num_variable):
+        if disc_of_i[(i,)] > score_of_empty_set:
+            W_set_of_i.append((i,))
+            max_score_list[i] = disc_of_i[(i,)]
+    
+    vari_list = [i for i in range(num_variable) if i != child_vari]
+    
+    for conb in itertools.combinations(vari_list,2):
+        a,b = conb
+        s = disc_of_i[conb]
+        if s>max_score_list[a] and s> max_score_list[b]:
+            W_set_of_i.append(conb)
+    return W_set_of_i
+
+def make_W_set_of_i_three(disc_of_i,child_vari,num_variable,max_parent_set):
     W_set_of_i = list()
     W_set_of_i.append((child_vari,))
     score_of_empty_set = disc_of_i[(child_vari,)]
@@ -461,6 +488,7 @@ def making_QUBO(bayes):
     #print(d_star)
     qubo_size = int(sum(len_of_u)  + num_vari*(num_vari +1)/2)
     bayes.qubo_size = qubo_size
+    bayes.kani_qubo_size = int(sum(len_of_u)  + num_vari)
     #print(qubo_size)
     qubo = np.zeros((qubo_size,qubo_size))
     count_u = 0
@@ -608,8 +636,8 @@ def eval_bay(bayes,re_list):
     print('割合',calc_bdeu/max_bdeu)
     print('ここのスコアは高いほうがよい')
     return
-max_parent = 3
-bayes = Bayes('child.bif',max_parent,1)
+max_parent = 2
+bayes = Bayes('alarm.bif',max_parent,1)
 
 
 
@@ -671,3 +699,4 @@ eval_bay(bayes,list)
 #print(bayes.score_disc_list)
 print(bayes.variable_list)
 print('qubo_size',bayes.qubo_size)
+print('kani_qubo_size',bayes.kani_qubo_size)

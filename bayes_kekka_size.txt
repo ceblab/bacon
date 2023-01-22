@@ -1,0 +1,83 @@
+cancer.bif
+N = 1.10^3
+m = 3
+qubo_size 30
+kani_qubo_size 20
+
+earthquake.bif
+qubo_size 43
+kani_qubo_size 33
+
+survey.bif
+qubo_size 35
+kani_qubo_size 20
+
+asia.bif
+qubo_size 102
+kani_qubo_size 74
+
+sachs.bif
+qubo_size 153
+kani_qubo_size 98
+
+child
+qubo_size 438
+kani_qubo_size 248
+
+insurance.bif
+qubo_size 855
+kani_qubo_size 504
+
+water.bif
+qubo_size 782
+kani_qubo_size 286
+
+mildew.bif
+qubo_size 809
+kani_qubo_size 214
+
+alarm.bif
+qubo_size 1588
+kani_qubo_size 922
+
+m =2
+cancer.bf
+qubo_size 30
+kani_qubo_size 20
+
+earthquake
+
+qubo_size 40
+kani_qubo_size 30
+
+survey.bif
+qubo_size 35
+kani_qubo_size 20
+
+asia.bif
+qubo_size 91
+kani_qubo_size 63
+
+sachs.bif
+qubo_size 139
+kani_qubo_size 84
+
+child.bif
+qubo_size 422
+kani_qubo_size 232
+
+insurance.bif
+qubo_size 772
+kani_qubo_size 421
+
+water.bif
+qubo_size 763
+kani_qubo_size 267
+
+mildew.bif
+qubo_size 809
+kani_qubo_size 214
+
+alarm.bif
+qubo_size 1312
+kani_qubo_size 646
